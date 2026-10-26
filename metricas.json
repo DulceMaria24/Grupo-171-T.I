@@ -1,0 +1,72 @@
+{
+  "laberinto": {
+    "filas": 11,
+    "columnas": 14,
+    "nodos_libres": 87,
+    "aristas": 89,
+    "inicio": [
+      0,
+      0
+    ],
+    "meta": [
+      10,
+      10
+    ]
+  },
+  "BFS": {
+    "expandidos": 64,
+    "costo": 20,
+    "max_frontera": 6,
+    "tiempo_ms": 0.06533640999954571
+  },
+  "DFS": {
+    "expandidos": 57,
+    "costo": 22,
+    "max_frontera": 6,
+    "tiempo_ms": 0.06564217499963831
+  },
+  "escalabilidad": [
+    {
+      "n": 10,
+      "bfs_exp": 70.125,
+      "dfs_exp": 29.25,
+      "bfs_costo": 18.0,
+      "dfs_costo": 24.5
+    },
+    {
+      "n": 20,
+      "bfs_exp": 304.125,
+      "dfs_exp": 100.875,
+      "bfs_costo": 38.0,
+      "dfs_costo": 83.25
+    },
+    {
+      "n": 30,
+      "bfs_exp": 657.5,
+      "dfs_exp": 175.875,
+      "bfs_costo": 58.25,
+      "dfs_costo": 141.5
+    },
+    {
+      "n": 40,
+      "bfs_exp": 1169.75,
+      "dfs_exp": 300.625,
+      "bfs_costo": 78.5,
+      "dfs_costo": 226.75
+    },
+    {
+      "n": 50,
+      "bfs_exp": 1849.125,
+      "dfs_exp": 484.625,
+      "bfs_costo": 98.25,
+      "dfs_costo": 379.25
+    },
+    {
+      "n": 60,
+      "bfs_exp": 2666.625,
+      "dfs_exp": 583.0,
+      "bfs_costo": 118.25,
+      "dfs_costo": 443.75
+    }
+  ]
+}
