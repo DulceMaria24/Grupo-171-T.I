@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Digitalización Documental & Reconocimiento de Dígitos por Grafos y AG</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0B0F19',
+                        panelbg: '#111827',
+                        borderbg: '#1F2937',
+                        cyanaccent: '#06B6D4',
+                        neonblue: '#3B82F6',
+                        neongreen: '#10B981',
+                        neonmagenta: '#EC4899'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js para gráficos de fitness -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0B0F19;
+            color: #F3F4F6;
+        }
+        /* Style canvas grid */
+        .pixel-grid {
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4B5563;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-gray-800 bg-panelbg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400">
+                    <i class="fa-solid me-1 fa-diagram-project text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight text-gray-100">DigitGraph AI</h1>
+                    <p class="text-xs text-gray-400">Digitalización Documental por Grafos y Algoritmos Genéticos</p>
+                </div>
+            </div>
+            <nav class="flex gap-2 text-sm font-medium">
+                <button onclick="switchTab('tab-app')" id="nav-app" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 transition">
+                    <i class="fa-solid fa-flask mr-1.5"></i>Aplicación Interactiva
+                </button>
+                <button onclick="switchTab('tab-theory')" id="nav-theory" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+                    <i class="fa-solid fa-book-open mr-1.5"></i>Documentación Teórica
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- TAB INTERACTIVO (APLICACIÓN) -->
+        <div id="tab-app" class="space-y-6">
+            
+            <!-- Top Controls & Interactive Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left Panel: Canvas 28x28 & Feature Extraction -->
+                <div class="lg:col-span-4 bg-panelbg border border-gray-800 rounded-xl p-5 flex flex-col space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <h2 class="font-semibold text-gray-200 flex items-center gap-2">
+                            <i class="fa-solid fa-pen-nib text-cyan-400"></i> Canvas de Entrada (28x28)
+                        </h2>
+                        <span class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400">Escala de Grises</span>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="flex flex-col items-center">
+                        <div class="relative p-1 bg-gray-900 border border-gray-700 rounded-lg shadow-inner">
+                            <canvas id="digitCanvas" width="280" height="280" class="pixel-grid cursor-crosshair rounded touch-none bg-black"></canvas>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 text-center">Dibuja con el ratón o el dedo. Redimensionado automáticamente a 28x28 px.</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="clearCanvas()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-trash-can"></i> Limpiar
+                        </button>
+                        <button onclick="extractFeaturesUI()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-lg shadow-cyan-900/30">
+                            <i class="fa-solid fa-microscope"></i> Extraer Rasgos
+                        </button>
+                    </div>
+
+                    <!-- Extractions Display -->
+                    <div class="bg-darkbg border border-gray-800 rounded-lg p-3 space-y-2 text-xs">
+                        <div class="text-gray-400 font-semibold border-b border-gray-800 pb-1 mb-2">Vector de Rasgos Extraído</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex justify-between bg-gray-900/60 p-1.5 rounded">
+                                <span class="text-gray-400">Huecos / Loops:</span>
+                                <span id="feat-holes" class="font-mono text-cyan-400 font-bold">0</span>
+                            </div>
+                            <div class="flex justify-between bg-gray-900/60 p-1.5 rounded">
+                                <span class="text-gray-400">Endpoints:</span>
+                                <span id="feat-endpoints" class="font-mono text-cyan-400 font-bold">0</span>
+                            </div>
+                            <div class="flex justify-between bg-gray-900/60 p-1.5 rounded">
+                                <span class="text-gray-400">Sim. Horiz:</span>
+                                <span id="feat-h-sym" class="font-mono text-cyan-400 font-bold">0.00</span>
+                            </div>
+                            <div class="flex justify-between bg-gray-900/60 p-1.5 rounded">
+                                <span class="text-gray-400">Sim. Vert:</span>
+                                <span id="feat-v-sym" class="font-mono text-cyan-400 font-bold">0.00</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/60 p-1.5 rounded">
+                            <span class="text-gray-400 block mb-1">Densidad Cuadrantes (Q1, Q2, Q3, Q4):</span>
+                            <span id="feat-quadrants" class="font-mono text-emerald-400 text-[11px] block text-center">[0.0, 0.0, 0.0, 0.0]</span>
+                        </div>
+                    </div>
+
+                    <!-- Search Execution Controls -->
+                    <div class="border-t border-gray-800 pt-3 space-y-2">
+                        <label class="text-xs text-gray-400 font-medium block">Algoritmo de Búsqueda:</label>
+                        <div class="flex gap-2">
+                            <select id="algorithmSelect" class="flex-1 bg-gray-900 border border-gray-700 text-gray-200 text-xs rounded-lg px-2.5 py-2 focus:ring-cyan-500 focus:border-cyan-500">
+                                <option value="Astar">A* (Heurística de Similitud)</option>
+                                <option value="BFS">BFS (Anchura)</option>
+                                <option value="DFS">DFS (Profundidad)</option>
+                            </select>
+                            <button onclick="runSearchUI()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-900/30 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-play"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Graph Visualization & Real-time Logs -->
+                <div class="lg:col-span-8 bg-panelbg border border-gray-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div>
+                            <h2 class="font-semibold text-gray-200 flex items-center gap-2">
+                                <i class="fa-solid fa-circle-nodes text-emerald-400"></i> Grafo de Estados de Clasificación
+                            </h2>
+                            <p class="text-xs text-gray-400">Nodos de 0 a 9 + NULL (Conectados desde UNKNOWN)</p>
+                        </div>
+                        <div id="searchResultBadge" class="hidden px-3 py-1 rounded-full text-xs font-bold bg-gray-800 border text-gray-300">
+                            Resultado: <span id="searchResultText">-</span>
+                        </div>
+                    </div>
+
+                    <!-- SVG Interactive Graph Canvas -->
+                    <div class="relative w-full h-[320px] bg-darkbg border border-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
+                        <svg id="graphSVG" class="w-full h-full cursor-pointer"></svg>
+                    </div>
+
+                    <!-- Real-time Step Logs -->
+                    <div class="bg-darkbg border border-gray-800 rounded-lg p-3 space-y-2">
+                        <div class="flex justify-between items-center text-xs border-b border-gray-800 pb-1.5">
+                            <span class="font-semibold text-gray-300"><i class="fa-solid fa-list-check mr-1 text-cyan-400"></i> Panel de Búsqueda (Open/Closed List)</span>
+                            <span id="logStepCount" class="text-gray-500 text-[10px]">Paso: 0</span>
+                        </div>
+                        <div id="logContainer" class="h-24 overflow-y-auto font-mono text-[11px] space-y-1 text-gray-400 pr-1">
+                            <div class="text-gray-600 italic">Haz clic en "Buscar" para simular el recorrido en el grafo...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Genetic Algorithm Section & Test Set -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- GA Panel -->
+                <div class="lg:col-span-6 bg-panelbg border border-gray-800 rounded-xl p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div>
+                            <h2 class="font-semibold text-gray-200 flex items-center gap-2">
+                                <i class="fa-solid fa-dna text-pink-400"></i> Optimización por Algoritmo Genético
+                            </h2>
+                            <p class="text-xs text-gray-400">Optimiza los pesos del vector de rasgos: $W = [w_{huecos}, w_{endpoints}, w_{simetria}, w_{densidad}]$</p>
+                        </div>
+                        <button onclick="runGeneticAlgorithm()" id="gaRunBtn" class="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-pink-900/30 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt"></i> Ejecutar AG
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                        <div class="bg-darkbg p-2 rounded-lg border border-gray-800">
+                            <div class="text-gray-500">Población</div>
+                            <div class="font-bold text-gray-200 text-sm">30</div>
+                        </div>
+                        <div class="bg-darkbg p-2 rounded-lg border border-gray-800">
+                            <div class="text-gray-500">Generaciones</div>
+                            <div class="font-bold text-gray-200 text-sm">25</div>
+                        </div>
+                        <div class="bg-darkbg p-2 rounded-lg border border-gray-800">
+                            <div class="text-gray-500">Tasa Mutación</div>
+                            <div class="font-bold text-pink-400 text-sm">15%</div>
+                        </div>
+                        <div class="bg-darkbg p-2 rounded-lg border border-gray-800">
+                            <div class="text-gray-500">Mejor Fitness</div>
+                            <div id="gaBestFitness" class="font-bold text-emerald-400 text-sm">0.0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Fitness Chart -->
+                    <div class="h-44 relative bg-darkbg border border-gray-800 rounded-lg p-2">
+                        <canvas id="fitnessChart"></canvas>
+                    </div>
+
+                    <!-- Optimized Chromosome Display -->
+                    <div class="bg-darkbg border border-gray-800 p-2.5 rounded-lg text-xs flex justify-between items-center">
+                        <span class="text-gray-400">Pesos Optimizados Actuales:</span>
+                        <span id="currentWeights" class="font-mono text-cyan-400 font-bold">[1.00, 1.00, 1.00, 1.00]</span>
+                    </div>
+                </div>
+
+                <!-- Test Set & Confusion Matrix Panel -->
+                <div class="lg:col-span-6 bg-panelbg border border-gray-800 rounded-xl p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div>
+                            <h2 class="font-semibold text-gray-200 flex items-center gap-2">
+                                <i class="fa-solid fa-vials text-amber-400"></i> Evaluación de Test Set (25 Muestras)
+                            </h2>
+                            <p class="text-xs text-gray-400">Genera 25 dígitos sintéticos (0-9 + null) y evalúa precisión</p>
+                        </div>
+                        <button onclick="evaluateTestSetUI()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-amber-900/30 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-pie"></i> Evaluar 25 Dígitos
+                        </button>
+                    </div>
+
+                    <!-- Samples Grid Preview -->
+                    <div class="bg-darkbg border border-gray-800 p-3 rounded-lg">
+                        <div class="text-xs text-gray-400 mb-2 flex justify-between">
+                            <span>Muestras de Test Generadas (0-9, repetidos y ruido):</span>
+                            <span id="testAccuracy" class="font-bold text-emerald-400">Precisión: --</span>
+                        </div>
+                        <div id="testSamplesGrid" class="grid grid-cols-5 sm:grid-cols-7 gap-1.5 max-h-36 overflow-y-auto p-1">
+                            <div class="text-xs text-gray-600 italic col-span-full text-center py-4">Haz clic en "Evaluar" para generar el conjunto de prueba.</div>
+                        </div>
+                    </div>
+
+                    <!-- Confusion Matrix Summary -->
+                    <div class="bg-darkbg border border-gray-800 p-3 rounded-lg space-y-1.5 text-xs">
+                        <div class="font-semibold text-gray-300">Resumen del Desempeño:</div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div class="p-1.5 bg-gray-900 rounded">
+                                <span class="text-gray-500 block text-[10px]">Aciertos</span>
+                                <span id="statSuccess" class="font-bold text-emerald-400 text-sm">0</span>
+                            </div>
+                            <div class="p-1.5 bg-gray-900 rounded">
+                                <span class="text-gray-500 block text-[10px]">Fallos</span>
+                                <span id="statFail" class="font-bold text-red-400 text-sm">0</span>
+                            </div>
+                            <div class="p-1.5 bg-gray-900 rounded">
+                                <span class="text-gray-500 block text-[10px]">Clasificados Null</span>
+                                <span id="statNull" class="font-bold text-amber-400 text-sm">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB TEÓRICO (DOCUMENTACIÓN Y SECCIONES) -->
+        <div id="tab-theory" class="hidden space-y-6">
+            
+            <!-- Section 1: Formulación Formal -->
+            <section class="bg-panelbg border border-gray-800 rounded-xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-cyan-400 flex items-center gap-2 border-b border-gray-800 pb-3">
+                    <span class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 text-sm">Sección 1</span> Formulación Formal del Problema de Búsqueda
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-image text-cyan-400"></i> a) Estado Inicial
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Matriz $I \in \mathbb{R}^{28 \times 28}$ en escala de grises ($[0, 255]$). Representa la imagen sin procesar capturada durante la digitalización documental, con ruido y trazos manuales variables.
+                        </p>
+                    </div>
+
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-blue-400"></i> b) Estados
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Tuplas de interpretaciones parciales de rasgos topológicos:
+                            $$S = (H, E, S_h, S_v, D_1, D_2, D_3, D_4)$$
+                            donde $H$ son huecos, $E$ son puntos finales, $S$ simetrías y $D_i$ densidad por cuadrante.
+                        </p>
+                    </div>
+
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-gears text-purple-400"></i> c) Acciones
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Operadores de extracción de características: Binarización (thresholding Otsu), Adelgazamiento (esqueletización de Zhang-Suen), Detección de Componentes Conectadas en Fondo (Loops) y Detección de Endpoints (vecinos activos).
+                        </p>
+                    </div>
+
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-bullseye text-emerald-400"></i> d) Prueba de Objetivo
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Asignación al dígito $d \in \{0, \dots, 9\}$ cuya distancia de discrepancia ponderada $D(S, P_d) < \tau$ (umbral). Si $D \ge \tau$ para todo dígito, se clasifica como <strong>NULL</strong>.
+                        </p>
+                    </div>
+
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-calculator text-amber-400"></i> e) Función de Coste
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Coste de coincidencia:
+                            $$g(n) = \sum_{i=1}^{k} w_i \cdot |f_i(I) - p_i(n)|$$
+                            Medida de disimilitud entre el vector de rasgos de la entrada y el patrón canónico del nodo $n$.
+                        </p>
+                    </div>
+
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb text-pink-400"></i> f) Justificación: ¿Ciega o Heurística?
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Es un problema de <strong>Búsqueda Heurística (A*)</strong>. Las búsquedas ciegas (BFS/DFS) exploran sin dirección la estructura del grafo. Una función heurística $h(n)$ basada en disimilitud topológica permite guiar la exploración prioritariamente hacia el dígito con mayor compatibilidad geométrica.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2 & 3: Grafo y Algoritmos -->
+            <section class="bg-panelbg border border-gray-800 rounded-xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2 border-b border-gray-800 pb-3">
+                    <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 text-sm">Secciones 2 y 3</span> Grafo Representativo & Algoritmos
+                </h2>
+
+                <div class="space-y-4 text-sm text-gray-300">
+                    <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                        <h3 class="font-semibold text-white">Estructura del Grafo y Ponderación de Aristas (1-10)</h3>
+                        <p class="text-xs text-gray-400">
+                            El nodo raíz <strong>UNKNOWN / NULL</strong> se conecta a los 10 nodos de dígitos ($0-9$) y a un nodo final de descarte ($NULL$). El peso de cada arista refleja la proximidad geométrica/topológica estimada:
+                        </p>
+                        <ul class="list-disc list-inside text-xs text-gray-400 space-y-1">
+                            <li><strong>Nodo '0':</strong> Peso bajo si $Huecos = 1$ y $Endpoints = 0$. Arista con peso 1-2.</li>
+                            <li><strong>Nodo '8':</strong> Peso bajo si $Huecos = 2$ y $Endpoints = 0$. Arista con peso 1.</li>
+                            <li><strong>Nodo '1':</strong> Peso bajo si $Huecos = 0$, $Endpoints = 2$ y simetría vertical alta.</li>
+                            <li><strong>Nodo 'NULL':</strong> Se activa con peso bajo si los rasgos no coinciden con ningún patrón razonable (ej. $Huecos > 2$ o $Endpoints > 4$).</li>
+                        </ul>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                            <h3 class="font-semibold text-white text-xs">Definición de Heurística $h(n)$ y Admisibilidad</h3>
+                            <p class="text-xs text-gray-400">
+                                La heurística se define como la distancia ponderada del vector de rasgos:
+                                $$h(n) = \sum w_j \cdot |\text{rasgo}_j(\text{entrada}) - \text{rasgo}_j(n)|$$
+                                <strong>Admisibilidad:</strong> $h(n)$ es admisible ($h(n) \le h^*(n)$) porque está acotada inferiormente por la diferencia física ineludible de características topológicas indispensables (como la ausencia/presencia de huecos cerrados).
+                            </p>
+                        </div>
+
+                        <div class="bg-darkbg border border-gray-800 p-4 rounded-lg space-y-2">
+                            <h3 class="font-semibold text-white text-xs">Algoritmo Genético (AG) para Optimización</h3>
+                            <p class="text-xs text-gray-400">
+                                <strong>Cromosoma:</strong> Vector continuo $\vec{W} = [w_1, w_2, w_3, w_4]$ con $w_i \in [0.1, 5.0]$.<br>
+                                <strong>Fitness:</strong> Porcentaje de clasificación correcta ($\% \text{ accuracy}$) sobre la matriz de prueba.<br>
+                                <strong>Operadores:</strong> Cruce aritmético promedio y Mutación gaussiana ($\sigma = 0.2$).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-panelbg text-gray-500 text-xs py-4 text-center">
+        Sistema de Digitalización Documental • Reconocimiento de Dígitos por Grafos & AG • HTML5 / JS Single File
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // ==========================================
+        // 1. GLOBAL STATE & CONSTANTS
+        // ==========================================
+        const GRID_SIZE = 28;
+        const CANVAS_DISPLAY_SIZE = 280;
+        const SCALE = CANVAS_DISPLAY_SIZE / GRID_SIZE;
+
+        let canvas, ctx;
+        let isDrawing = false;
+        let gridData = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(0));
+        let extractedFeatures = { holes: 0, endpoints: 0, hSym: 0, vSym: 0, quadrants: [0, 0, 0, 0] };
+
+        // Current Weights Optimized by GA [w_holes, w_endpoints, w_sym, w_quads]
+        let currentWeights = [2.5, 1.8, 1.0, 1.2];
+
+        // Canonical Patterns for Digits (0-9)
+        const DIGIT_PATTERNS = {
+            '0': { holes: 1, endpoints: 0, hSym: 0.85, vSym: 0.85, quads: [0.25, 0.25, 0.25, 0.25] },
+            '1': { holes: 0, endpoints: 2, hSym: 0.20, vSym: 0.90, quads: [0.10, 0.40, 0.10, 0.40] },
+            '2': { holes: 0, endpoints: 2, hSym: 0.30, vSym: 0.30, quads: [0.30, 0.20, 0.20, 0.30] },
+            '3': { holes: 0, endpoints: 3, hSym: 0.70, vSym: 0.30, quads: [0.25, 0.25, 0.25, 0.25] },
+            '4': { holes: 1, endpoints: 3, hSym: 0.20, vSym: 0.20, quads: [0.35, 0.35, 0.10, 0.20] },
+            '5': { holes: 0, endpoints: 2, hSym: 0.40, vSym: 0.30, quads: [0.35, 0.15, 0.20, 0.30] },
+            '6': { holes: 1, endpoints: 1, hSym: 0.40, vSym: 0.50, quads: [0.20, 0.20, 0.30, 0.30] },
+            '7': { holes: 0, endpoints: 2, hSym: 0.20, vSym: 0.30, quads: [0.45, 0.35, 0.10, 0.10] },
+            '8': { holes: 2, endpoints: 0, hSym: 0.85, vSym: 0.85, quads: [0.25, 0.25, 0.25, 0.25] },
+            '9': { holes: 1, endpoints: 1, hSym: 0.40, vSym: 0.50, quads: [0.30, 0.30, 0.20, 0.20] },
+            'NULL': { holes: 3, endpoints: 6, hSym: 0.00, vSym: 0.00, quads: [0.0, 0.0, 0.0, 0.0] }
+        };
+
+        // Graph Node Positions for SVG Rendering
+        const GRAPH_NODES = [
+            { id: 'START', label: 'UNKNOWN', x: 80, y: 160, color: '#06B6D4' },
+            { id: '0', label: 'Dígito 0', x: 230, y: 40, color: '#3B82F6' },
+            { id: '1', label: 'Dígito 1', x: 230, y: 95, color: '#3B82F6' },
+            { id: '2', label: 'Dígito 2', x: 230, y: 150, color: '#3B82F6' },
+            { id: '3', label: 'Dígito 3', x: 230, y: 205, color: '#3B82F6' },
+            { id: '4', label: 'Dígito 4', x: 230, y: 260, color: '#3B82F6' },
+            { id: '5', label: 'Dígito 5', x: 420, y: 40, color: '#3B82F6' },
+            { id: '6', label: 'Dígito 6', x: 420, y: 95, color: '#3B82F6' },
+            { id: '7', label: 'Dígito 7', x: 420, y: 150, color: '#3B82F6' },
+            { id: '8', label: 'Dígito 8', x: 420, y: 205, color: '#3B82F6' },
+            { id: '9', label: 'Dígito 9', x: 420, y: 260, color: '#3B82F6' },
+            { id: 'NULL', label: 'NULL', x: 550, y: 160, color: '#EF4444' }
+        ];
+
+        let fitnessChartInstance = null;
+
+        // ==========================================
+        // 2. INITIALIZATION & CANVAS HANDLERS
+        // ==========================================
+        window.onload = function() {
+            canvas = document.getElementById('digitCanvas');
+            ctx = canvas.getContext('2d');
+
+            // Mouse Events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch Events
+            canvas.addEventListener('touchstart', (e) => { startDrawing(e.touches[0]); e.preventDefault(); });
+            canvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+            canvas.addEventListener('touchend', stopDrawing);
+
+            clearCanvas();
+            renderGraphSVG();
+            initFitnessChart();
+        };
+
+        function switchTab(tabId) {
+            document.getElementById('tab-app').classList.add('hidden');
+            document.getElementById('tab-theory').classList.add('hidden');
+            document.getElementById(tabId).classList.remove('hidden');
+
+            const navApp = document.getElementById('nav-app');
+            const navTheory = document.getElementById('nav-theory');
+
+            if (tabId === 'tab-app') {
+                navApp.className = "px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 transition";
+                navTheory.className = "px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition";
+            } else {
+                navTheory.className = "px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 transition";
+                navApp.className = "px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition";
+            }
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / SCALE);
+            const y = Math.floor((e.clientY - rect.top) / SCALE);
+
+            if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                // Brush with radius
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                            gridData[ny][nx] = 1;
+                        }
+                    }
+                }
+                renderGridToCanvas();
+            }
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                extractFeaturesUI();
+            }
+        }
+
+        function clearCanvas() {
+            gridData = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(0));
+            renderGridToCanvas();
+            extractedFeatures = { holes: 0, endpoints: 0, hSym: 0, vSym: 0, quadrants: [0, 0, 0, 0] };
+            updateFeaturesUI();
+            document.getElementById('searchResultBadge').classList.add('hidden');
+        }
+
+        function renderGridToCanvas() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, CANVAS_DISPLAY_SIZE, CANVAS_DISPLAY_SIZE);
+
+            ctx.fillStyle = '#FFFFFF';
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (gridData[r][c] === 1) {
+                        ctx.fillRect(c * SCALE, r * SCALE, SCALE, SCALE);
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 3. FEATURE EXTRACTION ALGORITHMS
+        // ==========================================
+        function extractFeaturesUI() {
+            extractedFeatures = extractFeaturesFromGrid(gridData);
+            updateFeaturesUI();
+        }
+
+        function extractFeaturesFromGrid(grid) {
+            let totalPixels = 0;
+            let q1 = 0, q2 = 0, q3 = 0, q4 = 0;
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (grid[r][c] === 1) {
+                        totalPixels++;
+                        if (r < 14 && c >= 14) q1++;
+                        else if (r < 14 && c < 14) q2++;
+                        else if (r >= 14 && c < 14) q3++;
+                        else if (r >= 14 && c >= 14) q4++;
+                    }
+                }
+            }
+
+            if (totalPixels === 0) {
+                return { holes: 0, endpoints: 0, hSym: 0, vSym: 0, quadrants: [0, 0, 0, 0] };
+            }
+
+            const quads = [
+                parseFloat((q1 / totalPixels).toFixed(2)),
+                parseFloat((q2 / totalPixels).toFixed(2)),
+                parseFloat((q3 / totalPixels).toFixed(2)),
+                parseFloat((q4 / totalPixels).toFixed(2))
+            ];
+
+            // Horizontal & Vertical Symmetry
+            let hMatches = 0, vMatches = 0;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (grid[r][c] === 1) {
+                        if (grid[GRID_SIZE - 1 - r][c] === 1) hMatches++;
+                        if (grid[r][GRID_SIZE - 1 - c] === 1) vMatches++;
+                    }
+                }
+            }
+            const hSym = parseFloat((hMatches / totalPixels).toFixed(2));
+            const vSym = parseFloat((vMatches / totalPixels).toFixed(2));
+
+            // Hole/Loop Counting via Flood Fill on Background Components
+            const holes = countHoles(grid);
+
+            // Endpoints Counting on Simplified Skeleton
+            const endpoints = countEndpoints(grid);
+
+            return { holes, endpoints, hSym, vSym, quadrants: quads };
+        }
+
+        function countHoles(grid) {
+            const visited = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(false));
+            
+            // Flood fill outside background starting from borders
+            function floodFillBackground(r, c) {
+                const queue = [[r, c]];
+                visited[r][c] = true;
+                while (queue.length > 0) {
+                    const [currR, currC] = queue.shift();
+                    const neighbors = [
+                        [currR - 1, currC], [currR + 1, currC],
+                        [currR, currC - 1], [currR, currC + 1]
+                    ];
+                    for (let [nr, nc] of neighbors) {
+                        if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+                            if (!visited[nr][nc] && grid[nr][nc] === 0) {
+                                visited[nr][nc] = true;
+                                queue.push([nr, nc]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fill all outer connected zeros
+            for (let i = 0; i < GRID_SIZE; i++) {
+                if (grid[0][i] === 0 && !visited[0][i]) floodFillBackground(0, i);
+                if (grid[GRID_SIZE - 1][i] === 0 && !visited[GRID_SIZE - 1][i]) floodFillBackground(GRID_SIZE - 1, i);
+                if (grid[i][0] === 0 && !visited[i][0]) floodFillBackground(i, 0);
+                if (grid[i][GRID_SIZE - 1] === 0 && !visited[i][GRID_SIZE - 1]) floodFillBackground(i, GRID_SIZE - 1);
+            }
+
+            // Remaining unvisited zeros are holes inside foreground
+            let holesCount = 0;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (grid[r][c] === 0 && !visited[r][c]) {
+                        holesCount++;
+                        floodFillBackground(r, c); // Mark component
+                    }
+                }
+            }
+            return holesCount;
+        }
+
+        function countEndpoints(grid) {
+            let endpoints = 0;
+            for (let r = 1; r < GRID_SIZE - 1; r++) {
+                for (let c = 1; c < GRID_SIZE - 1; c++) {
+                    if (grid[r][c] === 1) {
+                        let activeNeighbors = 0;
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                if (grid[r + dr][c + dc] === 1) activeNeighbors++;
+                            }
+                        }
+                        if (activeNeighbors === 1) {
+                            endpoints++;
+                        }
+                    }
+                }
+            }
+            return Math.min(endpoints, 5); // Clamped
+        }
+
+        function updateFeaturesUI() {
+            document.getElementById('feat-holes').innerText = extractedFeatures.holes;
+            document.getElementById('feat-endpoints').innerText = extractedFeatures.endpoints;
+            document.getElementById('feat-h-sym').innerText = extractedFeatures.hSym.toFixed(2);
+            document.getElementById('feat-v-sym').innerText = extractedFeatures.vSym.toFixed(2);
+            document.getElementById('feat-quadrants').innerText = `[${extractedFeatures.quadrants.join(', ')}]`;
+        }
+
+        // ==========================================
+        // 4. GRAPH VISUALIZATION & SEARCH SIMULATION
+        // ==========================================
+        function renderGraphSVG() {
+            const svg = document.getElementById('graphSVG');
+            svg.innerHTML = ''; // Clear
+
+            // Draw Edge Connections from START (UNKNOWN) to Target Digits & NULL
+            GRAPH_NODES.forEach(node => {
+                if (node.id !== 'START') {
+                    const startNode = GRAPH_NODES[0];
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', startNode.x);
+                    line.setAttribute('y1', startNode.y);
+                    line.setAttribute('x2', node.x);
+                    line.setAttribute('y2', node.y);
+                    line.setAttribute('stroke', '#374151');
+                    line.setAttribute('stroke-width', '1.5');
+                    line.setAttribute('id', `edge-START-${node.id}`);
+                    svg.appendChild(line);
+                }
+            });
+
+            // Draw Nodes
+            GRAPH_NODES.forEach(node => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('id', `node-${node.id}`);
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', node.id === 'START' ? '22' : '16');
+                circle.setAttribute('fill', '#111827');
+                circle.setAttribute('stroke', node.color);
+                circle.setAttribute('stroke-width', '2.5');
+                circle.setAttribute('class', 'transition-all duration-300');
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', node.x);
+                text.setAttribute('y', node.y + 4);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#F3F4F6');
+                text.setAttribute('font-size', node.id === 'START' ? '10' : '11');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = node.id === 'START' ? 'UNK' : node.id;
+
+                g.appendChild(circle);
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
+        }
+
+        function calculateDiscrepancyCost(features, targetDigit, weights) {
+            const pat = DIGIT_PATTERNS[targetDigit];
+            const [wHoles, wEndpoints, wSym, wQuads] = weights;
+
+            const dHoles = Math.abs(features.holes - pat.holes) * wHoles;
+            const dEndpoints = Math.abs(features.endpoints - pat.endpoints) * wEndpoints;
+            const dSym = (Math.abs(features.hSym - pat.hSym) + Math.abs(features.vSym - pat.vSym)) * wSym;
+            
+            let dQuads = 0;
+            for (let i = 0; i < 4; i++) {
+                dQuads += Math.abs(features.quadrants[i] - pat.quads[i]);
+            }
+            dQuads *= wQuads;
+
+            return dHoles + dEndpoints + dSym + dQuads;
+        }
+
+        async function runSearchUI() {
+            const algo = document.getElementById('algorithmSelect').value;
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '';
+
+            // Reset SVG Graph Styles
+            renderGraphSVG();
+
+            const targets = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            let openList = [];
+            let visitedNodes = [];
+            let bestDigit = 'NULL';
+            let minCost = Infinity;
+
+            // Calculate costs for all digit candidate nodes
+            let candidates = targets.map(digit => {
+                const cost = calculateDiscrepancyCost(extractedFeatures, digit, currentWeights);
+                return { id: digit, cost: cost, h: cost };
+            });
+
+            if (algo === 'Astar') {
+                candidates.sort((a, b) => a.cost - b.cost); // Priority queue
+            } else if (algo === 'DFS') {
+                candidates.reverse();
+            }
+
+            openList = [...candidates];
+            let step = 0;
+
+            logMessage(`▶ Iniciando Búsqueda ${algo} desde el nodo START...`);
+
+            // Highlight START Node
+            highlightGraphNode('START', '#06B6D4');
+            await sleep(300);
+
+            for (let item of openList) {
+                step++;
+                document.getElementById('logStepCount').innerText = `Paso: ${step}`;
+                visitedNodes.push(item.id);
+
+                highlightGraphEdge('START', item.id, '#EAB308');
+                highlightGraphNode(item.id, '#EAB308'); // Yellow exploring
+
+                logMessage(`[Paso ${step}] Evaluando Nodo '${item.id}' | f(n) = ${item.cost.toFixed(3)} | OpenList rest: ${openList.length - step}`);
+
+                await sleep(180);
+
+                if (item.cost < minCost) {
+                    minCost = item.cost;
+                    bestDigit = item.id;
+                }
+
+                // If threshold exceeded, classify as NULL
+                if (algo === 'Astar' && item.cost < 2.2) {
+                    logMessage(`✔ Criterio de parada A* alcanzado en nodo óptimo '${item.id}' con coste ${item.cost.toFixed(3)}`);
+                    break;
+                }
+            }
+
+            // Umbral para clasificar como NULL
+            if (minCost > 4.5 || (extractedFeatures.holes === 0 && extractedFeatures.endpoints === 0)) {
+                bestDigit = 'NULL';
+            }
+
+            // Highlight final choice
+            highlightGraphNode(bestDigit, bestDigit === 'NULL' ? '#EF4444' : '#10B981');
+            highlightGraphEdge('START', bestDigit, bestDigit === 'NULL' ? '#EF4444' : '#10B981');
+
+            const resultBadge = document.getElementById('searchResultBadge');
+            const resultText = document.getElementById('searchResultText');
+            resultBadge.classList.remove('hidden');
+            resultText.innerText = bestDigit === 'NULL' ? 'NULL (No Dígito)' : `Dígito '${bestDigit}' (Coste: ${minCost.toFixed(2)})`;
+            resultBadge.className = `px-3 py-1 rounded-full text-xs font-bold border ${bestDigit === 'NULL' ? 'bg-red-950/40 border-red-500/40 text-red-400' : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400'}`;
+
+            logMessage(`🏆 Resultado Final: Clasificado como [ ${bestDigit} ]`);
+        }
+
+        function highlightGraphNode(nodeId, color) {
+            const nodeG = document.getElementById(`node-${nodeId}`);
+            if (nodeG) {
+                const circle = nodeG.querySelector('circle');
+                circle.setAttribute('fill', color);
+                circle.setAttribute('stroke', '#FFFFFF');
+            }
+        }
+
+        function highlightGraphEdge(fromId, toId, color) {
+            const edge = document.getElementById(`edge-${fromId}-${toId}`);
+            if (edge) {
+                edge.setAttribute('stroke', color);
+                edge.setAttribute('stroke-width', '3.5');
+            }
+        }
+
+        function logMessage(msg) {
+            const logContainer = document.getElementById('logContainer');
+            const div = document.createElement('div');
+            div.innerHTML = msg;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ==========================================
+        // 5. GENETIC ALGORITHM (AG) OPTIMIZATION
+        // ==========================================
+        function initFitnessChart() {
+            const ctxChart = document.getElementById('fitnessChart').getContext('2d');
+            fitnessChartInstance = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Mejor Fitness (%)',
+                        data: [],
+                        borderColor: '#EC4899',
+                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: true, grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF', font: { size: 10 } } },
+                        y: { display: true, min: 0, max: 100, grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF', font: { size: 10 } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        async function runGeneticAlgorithm() {
+            const btn = document.getElementById('gaRunBtn');
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+
+            const popSize = 30;
+            const generations = 25;
+            const mutationRate = 0.15;
+
+            // Generate synthetic dataset for evaluation
+            const testSet = generateSyntheticTestSet();
+
+            // Initialize Population (random weights [0.5 - 4.0])
+            let population = [];
+            for (let i = 0; i < popSize; i++) {
+                population.push([
+                    Math.random() * 3.5 + 0.5,
+                    Math.random() * 3.5 + 0.5,
+                    Math.random() * 3.5 + 0.5,
+                    Math.random() * 3.5 + 0.5
+                ]);
+            }
+
+            fitnessChartInstance.data.labels = [];
+            fitnessChartInstance.data.datasets[0].data = [];
+
+            let bestGlobalWeights = population[0];
+            let bestGlobalFitness = 0;
+
+            for (let gen = 1; gen <= generations; gen++) {
+                // Evaluate Fitness
+                let evaluated = population.map(chrom => {
+                    const fitness = evaluateChromosomeFitness(chrom, testSet);
+                    return { chrom, fitness };
+                });
+
+                evaluated.sort((a, b) => b.fitness - a.fitness);
+
+                if (evaluated[0].fitness > bestGlobalFitness) {
+                    bestGlobalFitness = evaluated[0].fitness;
+                    bestGlobalWeights = evaluated[0].chrom;
+                }
+
+                // Update UI Chart
+                fitnessChartInstance.data.labels.push(`G${gen}`);
+                fitnessChartInstance.data.datasets[0].data.push(evaluated[0].fitness.toFixed(1));
+                fitnessChartInstance.update();
+
+                document.getElementById('gaBestFitness').innerText = `${evaluated[0].fitness.toFixed(1)}%`;
+
+                // Selection (Top 50%) & Crossover
+                let nextGen = evaluated.slice(0, popSize / 2).map(e => e.chrom);
+                while (nextGen.length < popSize) {
+                    let parentA = nextGen[Math.floor(Math.random() * (popSize / 2))];
+                    let parentB = nextGen[Math.floor(Math.random() * (popSize / 2))];
+
+                    // Arithmetic Crossover
+                    let child = [
+                        (parentA[0] + parentB[0]) / 2,
+                        (parentA[1] + parentB[1]) / 2,
+                        (parentA[2] + parentB[2]) / 2,
+                        (parentA[3] + parentB[3]) / 2
+                    ];
+
+                    // Mutation
+                    if (Math.random() < mutationRate) {
+                        const geneIdx = Math.floor(Math.random() * 4);
+                        child[geneIdx] += (Math.random() - 0.5) * 0.8;
+                        child[geneIdx] = Math.max(0.1, Math.min(5.0, child[geneIdx]));
+                    }
+
+                    nextGen.push(child);
+                }
+
+                population = nextGen;
+                await sleep(50);
+            }
+
+            currentWeights = bestGlobalWeights.map(w => parseFloat(w.toFixed(2)));
+            document.getElementById('currentWeights').innerText = `[${currentWeights.join(', ')}]`;
+
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+        }
+
+        function evaluateChromosomeFitness(weights, testSet) {
+            let correct = 0;
+            testSet.forEach(sample => {
+                let minCost = Infinity;
+                let predicted = 'NULL';
+
+                ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(digit => {
+                    const cost = calculateDiscrepancyCost(sample.features, digit, weights);
+                    if (cost < minCost) {
+                        minCost = cost;
+                        predicted = digit;
+                    }
+                });
+
+                if (minCost > 4.5 || (sample.features.holes === 0 && sample.features.endpoints === 0)) {
+                    predicted = 'NULL';
+                }
+
+                if (predicted === sample.label) correct++;
+            });
+
+            return (correct / testSet.length) * 100;
+        }
+
+        // ==========================================
+        // 6. TEST SET GENERATION & EVALUATION (25 SAMPLES)
+        // ==========================================
+        function generateSyntheticTestSet() {
+            const testSet = [];
+            const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+            // 20 valid digit variations
+            for (let i = 0; i < 20; i++) {
+                const targetDigit = digits[i % 10];
+                const pat = DIGIT_PATTERNS[targetDigit];
+                testSet.push({
+                    label: targetDigit,
+                    features: {
+                        holes: pat.holes,
+                        endpoints: pat.endpoints,
+                        hSym: Math.max(0, Math.min(1, pat.hSym + (Math.random() - 0.5) * 0.15)),
+                        vSym: Math.max(0, Math.min(1, pat.vSym + (Math.random() - 0.5) * 0.15)),
+                        quadrants: pat.quads.map(q => Math.max(0, q + (Math.random() - 0.5) * 0.05))
+                    }
+                });
+            }
+
+            // 5 invalid / noise samples classified as NULL
+            for (let i = 0; i < 5; i++) {
+                testSet.push({
+                    label: 'NULL',
+                    features: {
+                        holes: Math.floor(Math.random() * 4) + 3, // Excessive holes
+                        endpoints: Math.floor(Math.random() * 5) + 5,
+                        hSym: 0.05,
+                        vSym: 0.05,
+                        quadrants: [0.1, 0.1, 0.1, 0.1]
+                    }
+                });
+            }
+
+            return testSet;
+        }
+
+        function evaluateTestSetUI() {
+            const testSet = generateSyntheticTestSet();
+            const gridContainer = document.getElementById('testSamplesGrid');
+            gridContainer.innerHTML = '';
+
+            let success = 0;
+            let fail = 0;
+            let nullCount = 0;
+
+            testSet.forEach((sample, idx) => {
+                let minCost = Infinity;
+                let predicted = 'NULL';
+
+                ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(digit => {
+                    const cost = calculateDiscrepancyCost(sample.features, digit, currentWeights);
+                    if (cost < minCost) {
+                        minCost = cost;
+                        predicted = digit;
+                    }
+                });
+
+                if (minCost > 4.5 || (sample.features.holes === 0 && sample.features.endpoints === 0)) {
+                    predicted = 'NULL';
+                }
+
+                 const isCorrect = predicted === sample.label;
+                if (isCorrect) success++;
+                else fail++;
+                if (predicted === 'NULL') nullCount++;
+
+                // Render Sample Card
+                const card = document.createElement('div');
+                card.className = `p-1.5 rounded border text-center text-xs flex flex-col justify-between ${
+                    isCorrect ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-red-950/30 border-red-500/40'
+                }`;
+                card.innerHTML = `
+                    <span class="text-[10px] text-gray-500">#${idx + 1}</span>
+                    <span class="font-bold ${isCorrect ? 'text-emerald-400' : 'text-red-400'}">${predicted}</span>
+                    <span class="text-[9px] text-gray-400">Real: ${sample.label}</span>
+                `;
+                gridContainer.appendChild(card);
+            });
+
+            const accuracy = ((success / testSet.length) * 100).toFixed(1);
+            document.getElementById('testAccuracy').innerText = `Precisión: ${accuracy}%`;
+            document.getElementById('statSuccess').innerText = success;document.getElementById('statFail').innerText = fail;
+            document.getElementById('statNull').innerText = nullCount;
+        }
+    </script>
+</body>
+</html>
