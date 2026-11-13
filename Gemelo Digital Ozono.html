@@ -1,0 +1,923 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Gemelo Digital Ozono</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: consola de control oscura. Izquierda panel de entradas, centro planta isométrica con tarjetas flotantes, abajo cinco gráficas en vivo. Segunda pestaña con el laboratorio de ML. */
+:root{
+  --bg:#050f16; --bg-2:#07202c; --panel:#0a1d28; --panel-2:#0e2735; --bar:#0b3646;
+  --line:#164250; --line-2:#1f5a6c; --fg:#d9eef2; --mut:#7ea5b1;
+  --acc:#26e6d8; --acc-2:#3b9bff; --good:#3fdc98; --warn:#ffb454; --bad:#ff6b6b;
+  --f-head:'Space Grotesk',system-ui,sans-serif; --f-body:'Inter',system-ui,sans-serif; --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f-body)}
+button,input,select{font:inherit;color:inherit}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1380px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 28px}
+
+/* cabecera */
+.top{display:flex;align-items:center;gap:14px 24px;flex-wrap:wrap;padding-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{flex:none}
+.brand h1{font:600 17px/1.1 var(--f-head);margin:0;letter-spacing:.01em;color:var(--acc)}
+.brand p{margin:2px 0 0;color:var(--mut);font-size:12px}
+.tabs{display:flex;gap:4px;margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px}
+.tabs button{border:0;background:none;padding:7px 14px;border-radius:6px;cursor:pointer;color:var(--mut);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--bar);color:var(--acc)}
+.tabs button:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible,.chipbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.live{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut);font-family:var(--f-mono)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mut);display:inline-block}
+.dot.on{background:var(--good);box-shadow:0 0 0 0 rgba(63,220,152,.6);animation:ping 1.8s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 8px rgba(63,220,152,0)}100%{box-shadow:0 0 0 0 rgba(63,220,152,0)}}
+
+/* paneles */
+.panel{background:linear-gradient(180deg,var(--panel),#08202c);border:1px solid var(--line);border-radius:6px}
+.ptitle{margin:0;padding:8px 12px;background:var(--bar);border-bottom:1px solid var(--line-2);color:var(--acc);font:500 13px var(--f-head);letter-spacing:.02em;border-radius:6px 6px 0 0}
+.stage{display:grid;grid-template-columns:262px minmax(0,1fr);gap:12px;align-items:start}
+.inpanel .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:9px}
+.fld label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:3px}
+.fld label span:last-child{font-family:var(--f-mono)}
+.fld input[type=number],.fld select,.sel{width:100%;background:#07161f;border:1px solid var(--line);border-radius:4px;padding:6px 9px;font:13px var(--f-mono);color:var(--fg)}
+.fld input[type=number]:disabled{opacity:.7}
+.fld input[type=range]{width:100%;accent-color:var(--acc);margin:3px 0 0;height:14px}
+.sel{font-family:var(--f-body)}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.chipbtn{border:1px solid var(--line-2);background:#07161f;border-radius:99px;padding:4px 10px;font-size:11.5px;cursor:pointer;color:var(--fg)}
+.chipbtn:hover{border-color:var(--acc);color:var(--acc)}
+.btnrow{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.btn{border:1px solid var(--line-2);background:#082635;border-radius:4px;min-width:42px;height:32px;padding:0 14px;cursor:pointer;color:var(--acc);display:inline-flex;align-items:center;justify-content:center}
+.btn:hover{background:#0b3646;border-color:var(--acc)}
+.btn[aria-pressed="true"]{background:#0f4a5a;border-color:var(--acc)}
+.status{text-align:center;font-size:12px;color:var(--good);min-height:18px;font-family:var(--f-mono)}
+.sep{height:1px;background:var(--line);margin:2px 0}
+
+/* escena */
+.scene-wrap{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(ellipse 70% 65% at 58% 62%,#0d4756 0%,#082a37 42%,#050f16 100%)}
+.scene-wrap::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(38,230,216,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(38,230,216,.045) 1px,transparent 1px);background-size:36px 36px;mask-image:radial-gradient(ellipse at 55% 60%,#000 20%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at 55% 60%,#000 20%,transparent 75%);pointer-events:none}
+.canvas{position:relative;aspect-ratio:1000/600;width:100%;max-width:100%;container-type:inline-size}
+.canvas svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glass{background:rgba(6,24,33,.82);border:1px solid var(--line-2);border-radius:6px;backdrop-filter:blur(3px)}
+.cards{position:absolute;left:12px;top:12px;width:190px;display:flex;flex-direction:column;gap:8px;z-index:2}
+.qc{padding:8px 10px;font-size:11px}
+.qc h4{margin:0 0 5px;font:500 11.5px var(--f-head);color:var(--acc);display:flex;align-items:center;gap:6px}
+.qc dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:1px 8px}
+.qc dt{color:var(--mut)}
+.qc dd{margin:0;text-align:right;font-family:var(--f-mono)}
+.kpis{position:absolute;right:16px;top:12px;display:grid;grid-template-columns:repeat(2,auto);gap:12px 30px;z-index:2}
+.kpi small{display:block;color:var(--mut);font-size:11px;margin-bottom:1px}
+.kpi b{font:600 26px/1.1 var(--f-head);color:var(--fg)}
+.kpi b i{font:400 11px var(--f-mono);font-style:normal;color:var(--mut);margin-left:4px}
+.kpi .pill{display:inline-block;margin-top:3px;font-size:10.5px;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+.kpi select{background:transparent;border:0;border-bottom:1px solid var(--line-2);font:600 17px var(--f-head);color:var(--fg);padding:2px 0;cursor:pointer;max-width:170px}
+.kpi select option{background:#07161f;color:var(--fg);font:14px var(--f-body)}
+.chip{position:absolute;transform:translate(-50%,-50%);z-index:2;font-size:clamp(9px,1.25cqw,12px);padding:.35em .7em;border-radius:5px;white-space:nowrap;display:flex;gap:.6em;align-items:center}
+.chip b{font-weight:500}
+.chip .mono{color:var(--acc)}
+.o2card{position:absolute;transform:translate(-50%,-100%);z-index:2;font-size:clamp(9px,1.2cqw,12px);padding:.6em .8em;width:17em;border-radius:6px}
+.o2card h5{margin:0 0 .4em;font:500 1.05em var(--f-head);color:var(--acc)}
+.o2card div{display:flex;justify-content:space-between;gap:1em;margin:.15em 0}
+.o2card .rec{border:1px solid var(--line-2);border-radius:4px;padding:.2em .5em;color:var(--good)}
+.o2card .rec span{color:var(--mut)}
+@container (max-width:680px){.o2card{display:none}}
+
+
+.canvas{overflow:hidden}
+.inner{position:absolute;inset:0}
+.frow{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:center}
+.frow input[type=range]{margin:0}
+@media (max-width:899px){
+  .canvas{aspect-ratio:1000/500}
+  .inner{inset:auto;width:118%;left:-15%;top:-30%;aspect-ratio:1000/600}
+}
+/* resultados */
+.results{margin-top:12px}
+.rhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--mut);padding-right:12px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.charts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:10px}
+.ch{background:#07161f;border:1px solid var(--line);border-radius:4px;padding:8px 8px 4px;min-width:0}
+.ch header{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.ch h3{margin:0;font:500 12px var(--f-body);color:var(--fg)}
+.ch .val{font-size:12px;color:var(--acc)}
+.ch canvas{width:100%;height:150px;display:block}
+
+/* pestaña ML */
+.mlgrid{display:grid;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:12px}
+.pad{padding:12px 14px}
+.defs{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0}
+.defs dt{color:var(--mut)}
+.defs dd{margin:0}
+.flow-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.tile{background:#07161f;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.tile small{color:var(--mut);display:block;font-size:11.5px}
+.tile b{font:600 22px var(--f-head)}
+.tile.end{border-color:var(--acc)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font:500 11.5px var(--f-body);color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+td small{display:block;color:var(--mut);font-size:11px;white-space:normal;max-width:260px}
+tr.win td{background:rgba(38,230,216,.07)}
+.tag{display:inline-block;margin-left:8px;font-size:10.5px;padding:1px 8px;border-radius:99px;background:var(--acc);color:#04222a;font-weight:600;vertical-align:middle}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:130px 1fr 58px;gap:10px;align-items:center;font-size:12.5px}
+.bar .track{height:10px;background:#07161f;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;background:var(--acc-2)}
+.bar.win .fill{background:var(--acc)}
+.bar .n{text-align:right;color:var(--mut);font-family:var(--f-mono)}
+.scatter{width:100%;height:300px;display:block}
+.note{color:var(--mut);font-size:12.5px;margin:8px 0 0}
+.callout{border-left:3px solid var(--warn);padding:8px 12px;background:rgba(255,180,84,.07);border-radius:0 4px 4px 0;font-size:13px}
+.foot{margin-top:18px;color:var(--mut);font-size:12px;max-width:90ch}
+
+@media (max-width:1100px){.charts{grid-template-columns:repeat(2,minmax(0,1fr))}.charts .ch:last-child{grid-column:1/-1}}
+@media (max-width:899px){
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .scene-wrap{display:flex;flex-direction:column}
+  .kpis{position:static;order:0;padding:12px 14px 0;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .canvas{order:1}
+  .cards{position:static;order:2;width:auto;flex-direction:row;padding:0 12px 12px}
+  .cards .qc{flex:1;min-width:0}
+  .tabs{margin-left:0}
+}
+@media (max-width:560px){.bar{grid-template-columns:96px 1fr 50px}.kpi b{font-size:22px}}
+@media (prefers-reduced-motion:reduce){.flow,.bub,.wave,.dot.on{animation:none!important}}
+
+/* animaciones de la planta */
+.flow{animation:dash var(--flowdur,1.4s) linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.wave{animation:wv 3.2s linear infinite}
+@keyframes wv{to{stroke-dashoffset:-30}}
+.bub{animation:rise var(--d,3s) ease-in infinite;animation-delay:var(--dl,0s);opacity:0}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:.85}100%{transform:translateY(var(--rise,-30px));opacity:0}}
+.win-glow{animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b3646" stroke="#1f5a6c"/><path d="M17 6c4.5 6 7 9.2 7 12.6a7 7 0 0 1-14 0C10 15.200 12.500 12 17 6z" fill="none" stroke="#26e6d8" stroke-width="1.8" stroke-linejoin="round"/><text x="17" y="22.500" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-weight="700" font-size="8" fill="#26e6d8">O₃</text></svg>
+      <div><h1>Gemelo Digital · Planta de Ozono</h1><p>Tratamiento terciario con dosificación predictiva por aprendizaje supervisado</p></div>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Secciones">
+      <button role="tab" id="tb-sim" aria-selected="true" aria-controls="tab-sim">Simulación</button>
+      <button role="tab" id="tb-ml" aria-selected="false" aria-controls="tab-ml">Modelos de ML</button>
+    </div>
+    <div class="live"><span class="dot" id="dot"></span><span id="livetxt">Entrenando modelos…</span></div>
+  </header>
+
+  <section id="tab-sim" role="tabpanel" aria-labelledby="tb-sim">
+    <div class="stage">
+      <aside class="panel inpanel">
+        <h2 class="ptitle">Simulación de ozono</h2>
+        <div class="body">
+          <div class="presets" id="presets"></div>
+          <div class="sep"></div>
+          <div id="fields" style="display:flex;flex-direction:column;gap:9px"></div>
+          <div class="sep"></div>
+          <div class="fld"><label for="mdl"><span>Modelo de predicción</span></label><select id="mdl" class="sel"><option>Entrenando…</option></select></div>
+          <div class="fld"><label for="dose"><span>Dosis de ozono (mg/L)</span><span id="dosemode">ML</span></label><div class="frow"><input id="dose" type="number" min="0.5" max="30" step="0.1" value="5" disabled><input id="doser" type="range" min="0.5" max="20" step="0.1" value="5" disabled aria-label="Dosis manual"></div></div>
+          <div class="btnrow">
+            <button class="btn" id="b-edit" title="Editar entradas">Editar</button>
+            <button class="btn" id="b-stop" title="Detener" aria-label="Detener"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.500" y="1.500" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.500"/></svg></button>
+            <button class="btn" id="b-play" title="Iniciar" aria-label="Iniciar"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.500 1.500l8 4.500-8 4.500z" fill="none" stroke="currentColor" stroke-width="1.500" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div class="status" id="status">Listo</div>
+        </div>
+      </aside>
+
+      <div class="scene-wrap">
+        <div class="kpis">
+          <div class="kpi"><small>Índice de calidad</small><b id="k-q">–</b><span class="pill" id="k-state">–</span></div>
+          <div class="kpi"><small>Modo de control</small><select id="mode" aria-label="Modo de control"><option value="ml">Predictivo (ML)</option><option value="manual">Manual</option></select></div>
+          <div class="kpi"><small>Dosis aplicada</small><b id="k-d">–<i>mg/L</i></b></div>
+          <div class="kpi"><small>Costo energético</small><b id="k-c">–<i>MXN/m³</i></b></div>
+        </div>
+        <div class="canvas" id="canvas"><div class="inner">
+          <svg id="scene" viewBox="0 0 1000 600" role="img" aria-label="Planta isométrica de ozonización con reactor, tanque de contacto, bombas y tuberías"></svg>
+          <div class="chip glass" id="c1"><b>Ozono 1#</b><span class="mono" id="c1v">–</span></div>
+          <div class="chip glass" id="c3"><b>Ozono 3#</b><span class="mono" id="c3v">–</span></div>
+          <div class="o2card glass" id="c2">
+            <h5>Ozono 2#</h5>
+            <div><span>Aplicado (mg/L)</span><span class="mono" id="o2a">–</span></div>
+            <div class="rec"><span>Recomendado:</span> <span class="mono" id="o2r" style="color:inherit">–</span></div>
+            <div><span>Caudal (m³/h)</span><span class="mono" id="o2q">–</span></div>
+          </div>
+        </div></div>
+        <div class="cards">
+          <div class="qc glass"><h4>Calidad de entrada</h4><dl id="qin"></dl></div>
+          <div class="qc glass"><h4>Calidad de salida</h4><dl id="qout"></dl></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel results" aria-label="Resultados de la simulación">
+      <div class="rhead"><h2 class="ptitle" style="flex:1;border-radius:6px 6px 0 0">Resultados de la simulación</h2></div>
+      <div class="charts" id="charts"></div>
+      <div class="legend" style="padding:0 12px 10px;justify-content:flex-end"><span><i style="background:#26e6d8"></i>Entrada</span><span><i style="background:#3fdc98"></i>Salida tratada</span><span class="mono">Últimos 60 s</span></div>
+    </section>
+  </section>
+
+  <section id="tab-ml" role="tabpanel" aria-labelledby="tb-ml" hidden>
+    <div class="mlgrid" id="mlroot"><div class="panel pad">Entrenando modelos…</div></div>
+  </section>
+
+  <p class="foot">Los datos de esta práctica son sintéticos: salen de un simulador de proceso con ruido, duplicados y valores faltantes agregados a propósito. Las métricas describen qué tan bien aprende cada algoritmo ese simulador, no una planta real. Para la entrega final conviene sustituir el generador por un dataset abierto (por ejemplo CONAGUA o UCI) y repetir el entrenamiento con el mismo flujo.</p>
+</div>
+
+<script>
+/* ===== Aprendizaje supervisado: dataset, preparación y modelos (regresión de la dosis de ozono) ===== */
+const FEATS = ['caudal', 'ntu', 'ph', 'temp', 'uv', 'dqo'];
+const FEAT_LABEL = { caudal: 'Caudal', ntu: 'Turbidez', ph: 'pH', temp: 'Temperatura', uv: 'UV254', dqo: 'DQO' };
+const RANGES = { caudal: [200, 1200], ntu: [2, 60], ph: [5.8, 9], temp: [8, 34], uv: [5, 60], dqo: [15, 220] };
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function gauss(r) { let u = 0; while (!u) u = r(); const v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function shuffle(a, rng) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const vec = r => FEATS.map(f => r[f]);
+
+/* Dosis de ozono que exige el proceso (la "física" del gemelo digital). */
+function requiredDose(x) {
+  const carga = 0.5 + 0.022 * x.dqo + 0.035 * x.uv + 0.014 * x.ntu + 0.00045 * x.dqo * x.uv;
+  const fPH = 1 + 0.16 * Math.max(0, x.ph - 7.2) ** 1.6;          // el ozono se descompone a pH alto
+  const fT = 1 + 0.028 * (x.temp - 20) + (x.temp > 27 ? 0.05 * (x.temp - 27) : 0);
+  const fQ = 0.8 + 0.4 * Math.sqrt(x.caudal / 700);
+  const turb = x.ntu > 32 ? 0.9 + 0.06 * (x.ntu - 32) : 0;        // sobrecarga por turbidez alta
+  return Math.max(0.5, carga * fPH * fT * fQ + turb);
+}
+
+/* 1) Dataset sintético: lecturas de sensores + dosis aplicada por operadores (con ruido). */
+function genRaw(rng, n) {
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const carga = rng(), o = {};
+    for (const f of FEATS) {
+      const [lo, hi] = RANGES[f];
+      const corr = f === 'ntu' || f === 'uv' || f === 'dqo';
+      const t = corr ? 0.55 * carga + 0.45 * rng() : rng();
+      o[f] = lo + t * (hi - lo);
+    }
+    o.dosis = Math.max(0.5, requiredDose(o) + 0.3 * gauss(rng));
+    rows.push(o);
+  }
+  return rows;
+}
+/* Defectos típicos de datos reales: faltantes, picos de sensor y duplicados. */
+function injectDefects(rows, rng) {
+  const raw = rows.map(r => ({ ...r }));
+  for (const r of raw) for (const f of FEATS) if (rng() < 0.012) r[f] = null;
+  for (const r of raw) if (rng() < 0.012) { const f = FEATS[1 + Math.floor(rng() * 5)]; if (r[f] != null) r[f] *= 3.2; }
+  const dup = [];
+  for (let i = 0; i < 14; i++) dup.push({ ...raw[Math.floor(rng() * raw.length)] });
+  return raw.concat(dup);
+}
+
+/* 2) Preparación: duplicados, imputación por mediana, atípicos con regla IQR 1.5. */
+function cleanData(raw) {
+  const info = { bruto: raw.length };
+  const seen = new Set(), uniq = [];
+  for (const r of raw) {
+    const k = FEATS.map(f => r[f]).join('|') + '|' + r.dosis;
+    if (seen.has(k)) continue;
+    seen.add(k); uniq.push({ ...r });
+  }
+  info.duplicados = raw.length - uniq.length;
+  const med = {};
+  for (const f of FEATS) {
+    const v = uniq.map(r => r[f]).filter(x => x != null).sort((a, b) => a - b);
+    med[f] = v[v.length >> 1];
+  }
+  let faltantes = 0;
+  for (const r of uniq) for (const f of FEATS) if (r[f] == null) { r[f] = med[f]; faltantes++; }
+  info.faltantes = faltantes;
+  const fence = {};
+  for (const f of FEATS) {
+    const v = uniq.map(r => r[f]).sort((a, b) => a - b);
+    const q1 = v[Math.floor(v.length * 0.25)], q3 = v[Math.floor(v.length * 0.75)], i = q3 - q1;
+    fence[f] = [q1 - 1.5 * i, q3 + 1.5 * i];
+  }
+  const rows = uniq.filter(r => FEATS.every(f => r[f] >= fence[f][0] && r[f] <= fence[f][1]));
+  info.atipicos = uniq.length - rows.length;
+  info.final = rows.length;
+  return { rows, info };
+}
+
+function metrics(yt, yp) {
+  const n = yt.length; let se = 0, ae = 0, m = 0, st = 0;
+  for (const v of yt) m += v; m /= n;
+  for (let i = 0; i < n; i++) { const e = yt[i] - yp[i]; se += e * e; ae += Math.abs(e); st += (yt[i] - m) ** 2; }
+  return { rmse: Math.sqrt(se / n), mae: ae / n, r2: 1 - se / st };
+}
+function fitScaler(X) {
+  const p = X[0].length, mu = new Array(p).fill(0), sd = new Array(p).fill(0);
+  for (const r of X) r.forEach((v, j) => mu[j] += v);
+  for (let j = 0; j < p; j++) mu[j] /= X.length;
+  for (const r of X) r.forEach((v, j) => sd[j] += (v - mu[j]) ** 2);
+  for (let j = 0; j < p; j++) sd[j] = Math.sqrt(sd[j] / X.length) || 1;
+  return { mu, sd, apply: x => x.map((v, j) => (v - mu[j]) / sd[j]) };
+}
+
+/* 3) Modelos */
+class KNN {
+  constructor(k) { this.k = k; }
+  fit(X, y) { this.sc = fitScaler(X); this.X = X.map(this.sc.apply); this.y = y; return this; }
+  predict(x) {
+    const s = this.sc.apply(x), n = this.X.length, d = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let t = 0; const r = this.X[i];
+      for (let j = 0; j < s.length; j++) { const e = r[j] - s[j]; t += e * e; }
+      d[i] = [t, i];
+    }
+    d.sort((a, b) => a[0] - b[0]);
+    let w = 0, acc = 0;
+    for (let q = 0; q < this.k; q++) { const wi = 1 / (Math.sqrt(d[q][0]) + 1e-6); w += wi; acc += wi * this.y[d[q][1]]; }
+    return acc / w;
+  }
+}
+
+function buildTree(X, y, idx, depth, o, rng) {
+  const n = idx.length; let s = 0;
+  for (const i of idx) s += y[i];
+  const node = { v: s / n };
+  if (depth >= o.maxDepth || n < o.minLeaf * 2) return node;
+  const p = X[0].length;
+  let feats = [...Array(p).keys()];
+  if (o.mtry && o.mtry < p) { shuffle(feats, rng); feats = feats.slice(0, o.mtry); }
+  let best = null, bestScore = s * s / n + 1e-9;
+  for (const f of feats) {
+    const srt = idx.slice().sort((a, b) => X[a][f] - X[b][f]);
+    let sl = 0;
+    for (let k = 0; k < n - 1; k++) {
+      sl += y[srt[k]];
+      const nl = k + 1, nr = n - nl;
+      if (nl < o.minLeaf || nr < o.minLeaf) continue;
+      if (X[srt[k]][f] === X[srt[k + 1]][f]) continue;
+      const sr = s - sl, sc = sl * sl / nl + sr * sr / nr;
+      if (sc > bestScore) { bestScore = sc; best = { f, t: (X[srt[k]][f] + X[srt[k + 1]][f]) / 2 }; }
+    }
+  }
+  if (!best) return node;
+  const L = [], R = [];
+  for (const i of idx) (X[i][best.f] <= best.t ? L : R).push(i);
+  if (!L.length || !R.length) return node;
+  node.f = best.f; node.t = best.t;
+  node.l = buildTree(X, y, L, depth + 1, o, rng);
+  node.r = buildTree(X, y, R, depth + 1, o, rng);
+  return node;
+}
+function treePredict(node, x) { while (node.f !== undefined) node = x[node.f] <= node.t ? node.l : node.r; return node.v; }
+
+class Tree {
+  constructor(maxDepth, minLeaf) { this.maxDepth = maxDepth; this.minLeaf = minLeaf; }
+  fit(X, y) {
+    this.root = buildTree(X, y, X.map((_, i) => i), 0, { maxDepth: this.maxDepth, minLeaf: this.minLeaf }, mulberry32(1));
+    return this;
+  }
+  predict(x) { return treePredict(this.root, x); }
+}
+class RF {
+  constructor(nTrees, maxDepth, minLeaf, seed) { this.nTrees = nTrees; this.maxDepth = maxDepth; this.minLeaf = minLeaf; this.seed = seed; }
+  fit(X, y) {
+    const rng = mulberry32(this.seed), n = X.length, p = X[0].length;
+    this.trees = [];
+    for (let t = 0; t < this.nTrees; t++) {
+      const idx = Array.from({ length: n }, () => Math.floor(rng() * n));
+      this.trees.push(buildTree(X, y, idx, 0, { maxDepth: this.maxDepth, minLeaf: this.minLeaf, mtry: Math.max(2, Math.round(p / 2)) }, rng));
+    }
+    return this;
+  }
+  predict(x) { let s = 0; for (const t of this.trees) s += treePredict(t, x); return s / this.trees.length; }
+}
+class Ridge {
+  constructor(lambda) { this.lambda = lambda; }
+  fit(X, y) {
+    this.sc = fitScaler(X);
+    const Z = X.map(this.sc.apply), p = Z[0].length + 1;
+    const A = Array.from({ length: p }, () => new Array(p + 1).fill(0));
+    for (let i = 0; i < Z.length; i++) {
+      const z = [1, ...Z[i]];
+      for (let a = 0; a < p; a++) { for (let b = 0; b < p; b++) A[a][b] += z[a] * z[b]; A[a][p] += z[a] * y[i]; }
+    }
+    for (let a = 1; a < p; a++) A[a][a] += this.lambda;
+    for (let c = 0; c < p; c++) {
+      let m = c;
+      for (let r = c + 1; r < p; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+      [A[c], A[m]] = [A[m], A[c]];
+      for (let r = 0; r < p; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= p; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    this.w = A.map((row, i) => row[p] / row[i]);
+    return this;
+  }
+  predict(x) { const z = this.sc.apply(x); let s = this.w[0]; for (let j = 0; j < z.length; j++) s += this.w[j + 1] * z[j]; return s; }
+}
+
+function permImportance(model, Xt, yt, rng) {
+  const base = metrics(yt, Xt.map(x => model.predict(x))).rmse;
+  const imp = FEATS.map((_, j) => {
+    let acc = 0; const R = 3;
+    for (let r = 0; r < R; r++) {
+      const col = Xt.map(x => x[j]); shuffle(col, rng);
+      const Xp = Xt.map((x, i) => { const c = x.slice(); c[j] = col[i]; return c; });
+      acc += metrics(yt, Xp.map(x => model.predict(x))).rmse - base;
+    }
+    return Math.max(0, acc / R);
+  });
+  const tot = imp.reduce((a, b) => a + b, 0) || 1;
+  return imp.map(v => 100 * v / tot);
+}
+
+function runPipeline() {
+  const rng = mulberry32(2026);
+  const base = genRaw(rng, 900);
+  const raw = injectDefects(base, rng);
+  const { rows, info } = cleanData(raw);
+  shuffle(rows, rng);
+  const nTest = Math.round(rows.length * 0.2);
+  const test = rows.slice(0, nTest), train = rows.slice(nTest);
+  const Xtr = train.map(vec), ytr = train.map(r => r.dosis), Xte = test.map(vec), yte = test.map(r => r.dosis);
+
+  const nv = Math.round(Xtr.length * 0.2);
+  let bestK = 5, bestE = Infinity;
+  for (const k of [3, 5, 7, 9, 11, 15]) {
+    const m = new KNN(k).fit(Xtr.slice(nv), ytr.slice(nv));
+    const e = metrics(ytr.slice(0, nv), Xtr.slice(0, nv).map(x => m.predict(x))).rmse;
+    if (e < bestE) { bestE = e; bestK = k; }
+  }
+  const specs = [
+    { key: 'knn', name: 'KNN', desc: 'k = ' + bestK + ', vecinos ponderados por distancia', make: () => new KNN(bestK) },
+    { key: 'tree', name: 'Árbol de decisión', desc: 'profundidad máx. 8, hoja mín. 4', make: () => new Tree(8, 4) },
+    { key: 'rf', name: 'Random Forest', desc: '80 árboles, profundidad máx. 10', make: () => new RF(80, 10, 3, 7) },
+    { key: 'lin', name: 'Regresión lineal (base)', desc: 'Ridge con λ = 1', make: () => new Ridge(1) }
+  ];
+  const models = specs.map(s => {
+    const t0 = performance.now();
+    const m = s.make().fit(Xtr, ytr);
+    const ms = performance.now() - t0;
+    const yp = Xte.map(x => m.predict(x));
+    return { ...s, model: m, ms, yp, ...metrics(yte, yp) };
+  });
+  let win = 0;
+  models.forEach((m, i) => { if (m.rmse < models[win].rmse) win = i; });
+  const importance = permImportance(models[win].model, Xte, yte, mulberry32(99));
+  return { info, nTrain: train.length, nTest: test.length, models, win, yte, importance, bestK };
+}
+
+if (typeof module !== 'undefined') module.exports = { runPipeline, requiredDose, FEATS, RANGES };
+
+</script>
+<script>
+(function () {
+'use strict';
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ===================== Geometría isométrica ===================== */
+const K = 0.8660254;
+const P = (x, y, z) => [(x - y) * K, (x + y) * 0.5 - z];
+const f1 = n => (Math.round(n * 10) / 10).toString();
+const pt = (x, y, z) => P(x, y, z).map(f1).join(',');
+const poly = (arr, fill, extra) => '<polygon points="' + arr.map(p => pt(p[0], p[1], p[2])).join(' ') + '" fill="' + fill + '" ' + (extra || '') + '/>';
+function box(x, y, z, w, d, h, c) {
+  return poly([[x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h]], c.r)
+    + poly([[x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h]], c.l)
+    + poly([[x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]], c.t, 'stroke="' + (c.s || 'none') + '" stroke-width=".6"');
+}
+function cyl(cx, cy, z, r, h, g, top) {
+  const s = P(cx, cy, z), rx = r * 1.2247, ry = r * 0.7071, sx = s[0], sy = s[1];
+  const d = 'M' + f1(sx - rx) + ',' + f1(sy) + ' L' + f1(sx - rx) + ',' + f1(sy - h) + ' A' + f1(rx) + ',' + f1(ry) + ' 0 0 1 ' + f1(sx + rx) + ',' + f1(sy - h)
+    + ' L' + f1(sx + rx) + ',' + f1(sy) + ' A' + f1(rx) + ',' + f1(ry) + ' 0 0 1 ' + f1(sx - rx) + ',' + f1(sy) + 'Z';
+  return '<path d="' + d + '" fill="url(#' + g + ')"/><ellipse cx="' + f1(sx) + '" cy="' + f1(sy - h) + '" rx="' + f1(rx) + '" ry="' + f1(ry) + '" fill="' + top + '"/>';
+}
+function pipe(p3, w) {
+  const d = 'M' + p3.map(p => pt(p[0], p[1], p[2])).join(' L');
+  return '<path d="' + d + '" fill="none" stroke="#12303d" stroke-width="' + (w + 3.5) + '" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<path d="' + d + '" fill="none" stroke="#5fe9e1" stroke-opacity=".38" stroke-width="' + w + '" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<path class="flow" d="' + d + '" fill="none" stroke="#c8fffb" stroke-width="' + (w * 0.5) + '" stroke-dasharray="5 15" stroke-linecap="round" filter="url(#glow)"/>';
+}
+function faceX(x, y0, y1, z0, z1, fill) { return poly([[x, y0, z0], [x, y1, z0], [x, y1, z1], [x, y0, z1]], fill); }
+function faceY(y, x0, x1, z0, z1, fill) { return poly([[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]], fill); }
+function pump(x, y, z, s) {
+  s = s || 1;
+  return box(x, y, z, 22 * s, 13 * s, 4, { t: '#4b6472', l: '#2d414d', r: '#22343e' })
+    + cyl(x + 6 * s, y + 7 * s, z + 4, 6 * s, 13 * s, 'gBlue', '#5aa4ff')
+    + cyl(x + 16 * s, y + 7 * s, z + 4, 4.200 * s, 9 * s, 'gMetal', '#cfe1e8')
+    + '<ellipse cx="' + f1(P(x + 6 * s, y + 7 * s, z + 4 + 13 * s)[0]) + '" cy="' + f1(P(x + 6 * s, y + 7 * s, z + 4 + 13 * s)[1]) + '" rx="3" ry="1.800" fill="#bfe1ff" opacity=".7"/>';
+}
+
+const SLAB = { t: '#dce8ee', l: '#9db1bd', r: '#7a909d', s: '#b9ccd6' };
+const RIM = { t: '#e7f1f5', l: '#a9bcc7', r: '#82989f', s: '#c8d9e1' };
+
+function buildScene() {
+  const poolBack = '#0a4658';
+  let s = '';
+  s += '<defs>'
+    + '<linearGradient id="gMetal" x1="0" x2="1"><stop offset="0" stop-color="#48606d"/><stop offset=".3" stop-color="#e9f3f7"/><stop offset=".62" stop-color="#9db5c1"/><stop offset="1" stop-color="#32495a"/></linearGradient>'
+    + '<linearGradient id="gBlue" x1="0" x2="1"><stop offset="0" stop-color="#0a3a86"/><stop offset=".35" stop-color="#3f8fff"/><stop offset=".7" stop-color="#1c5fc9"/><stop offset="1" stop-color="#082b66"/></linearGradient>'
+    + '<linearGradient id="gGlass" x1="0" x2="1"><stop offset="0" stop-color="#26e6d8" stop-opacity=".35"/><stop offset=".3" stop-color="#d5fffb" stop-opacity=".55"/><stop offset="1" stop-color="#26e6d8" stop-opacity=".22"/></linearGradient>'
+    + '<linearGradient id="gWaterV" x1="0" x2="1"><stop offset="0" stop-color="#0aa5b8"/><stop offset=".4" stop-color="#53f5ea"/><stop offset="1" stop-color="#0a8ea5"/></linearGradient>'
+    + '<linearGradient id="gWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#41f3ea"/><stop offset=".55" stop-color="#19c6d4"/><stop offset="1" stop-color="#0c8ea8"/></linearGradient>'
+    + '<radialGradient id="gGround" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#26e6d8" stop-opacity=".22"/><stop offset="1" stop-color="#26e6d8" stop-opacity="0"/></radialGradient>'
+    + '<filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+    + '<filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>'
+    + '<clipPath id="waterClip"><polygon points="' + [[46, 52, 22], [198, 52, 22], [198, 162, 22], [46, 162, 22]].map(p => pt(p[0], p[1], p[2])).join(' ') + '"/></clipPath>'
+    + '</defs>';
+
+  s += '<g id="world" transform="translate(440,105) scale(1.3)">';
+  // resplandor del suelo
+  s += '<ellipse cx="' + f1(P(260, 120, 0)[0]) + '" cy="' + f1(P(260, 120, 0)[1] + 20) + '" rx="330" ry="150" fill="url(#gGround)"/>';
+
+  // plataforma 2 y losa principal
+  s += box(360, 90, 0, 140, 100, 10, SLAB);
+  s += box(0, 0, 0, 300, 230, 14, SLAB);
+  // base del reactor
+  s += box(-72, 118, 0, 64, 64, 6, SLAB);
+
+  // tubería del reactor a la piscina (a nivel del suelo)
+  s += pipe([[-40, 150, 16], [14, 150, 20], [14, 100, 20], [46, 100, 20]], 4.500);
+
+  // ---- piscina de contacto ----
+  s += box(34, 40, 14, 174, 132, 12, RIM);
+  s += poly([[44, 50, 26], [198, 50, 26], [198, 162, 26], [44, 162, 26]], '#05222d');
+  s += poly([[44, 50, 22], [44, 162, 22], [44, 162, 26], [44, 50, 26]], poolBack);
+  s += poly([[44, 50, 22], [198, 50, 22], [198, 50, 26], [44, 50, 26]], '#0b5568');
+  s += poly([[46, 52, 22], [198, 52, 22], [198, 162, 22], [46, 162, 22]], 'url(#gWater)');
+  // ondas animadas
+  s += '<g clip-path="url(#waterClip)" opacity=".7">';
+  for (let y = 60; y < 162; y += 13) {
+    s += '<polyline class="wave" points="' + [[46, y, 22], [90, y + 3, 22], [130, y - 3, 22], [170, y + 3, 22], [198, y, 22]].map(p => pt(p[0], p[1], p[2])).join(' ') + '" fill="none" stroke="#e7fffd" stroke-opacity=".55" stroke-width=".9" stroke-dasharray="8 22"/>';
+  }
+  s += '</g>';
+  // zona de difusores
+  s += '<g id="dosefx" opacity=".6">' + poly([[46, 52, 22], [96, 52, 22], [96, 162, 22], [46, 162, 22]], '#c8fffb', 'opacity=".28" filter="url(#soft)"') + '</g>';
+  // mamparas
+  s += box(100, 52, 22, 5, 74, 7, { t: '#cdeef0', l: 'rgba(190,240,244,.5)', r: 'rgba(150,225,232,.45)' });
+  s += box(146, 88, 22, 5, 74, 7, { t: '#cdeef0', l: 'rgba(190,240,244,.5)', r: 'rgba(150,225,232,.45)' });
+  s += '<g id="poolbub"></g>';
+  // bordes frontales por encima del agua
+  s += poly([[198, 40, 26], [208, 40, 26], [208, 172, 26], [198, 172, 26]], RIM.t, 'stroke="#c8d9e1" stroke-width=".6"');
+  s += poly([[34, 162, 26], [208, 162, 26], [208, 172, 26], [34, 172, 26]], RIM.t, 'stroke="#c8d9e1" stroke-width=".6"');
+  // difusores (puntos en el fondo visible)
+  for (let y = 62; y <= 152; y += 18) s += '<circle cx="' + f1(P(52, y, 22)[0]) + '" cy="' + f1(P(52, y, 22)[1]) + '" r="1.800" fill="#effffd"/>';
+
+  // ---- reactor (jarra de vidrio) ----
+  s += cyl(-40, 150, 6, 22, 62, 'gGlass', 'rgba(220,255,252,.55)');
+  s += cyl(-40, 150, 7, 18.500, 38, 'gWaterV', '#8ffcf4');
+  s += '<g id="jarbub"></g>';
+  s += cyl(-40, 150, 68, 24, 5, 'gMetal', '#dbe9ee');
+  s += cyl(-40, 150, 73, 4, 14, 'gMetal', '#dbe9ee');
+
+  // ---- edificio ----
+  s += box(214, 10, 14, 76, 80, 54, { t: '#eef5f8', l: '#aebfca', r: '#8497a3', s: '#c9d9e1' });
+  s += faceX(290, 24, 46, 40, 58, '#1ad9cf') + faceX(290, 54, 76, 40, 58, '#1ad9cf');
+  s += faceX(290, 24, 46, 40, 58, 'rgba(255,255,255,.12)');
+  s += faceY(90, 224, 244, 18, 40, '#0c2f3c') + faceY(90, 252, 280, 40, 58, '#1ad9cf');
+  s += box(204, 60, 14, 12, 18, 10, { t: '#dfeaf0', l: '#9fb3bf', r: '#7c909c' });
+
+  // ---- torre y tanques en la losa ----
+  s += cyl(262, 118, 14, 8, 88, 'gMetal', '#e9f3f7');
+  s += cyl(262, 118, 102, 11, 6, 'gMetal', '#dbe9ee');
+  s += cyl(238, 156, 14, 15, 40, 'gMetal', '#eaf3f7');
+  s += cyl(266, 196, 14, 13, 32, 'gMetal', '#eaf3f7');
+  s += pump(214, 128, 14, 1) + pump(226, 190, 14, 1);
+
+  // ---- plataforma 2 ----
+  s += cyl(392, 118, 10, 10, 46, 'gMetal', '#eaf3f7');
+  s += cyl(470, 112, 10, 9, 36, 'gMetal', '#eaf3f7');
+  s += pump(384, 150, 10, 1.300) + pump(418, 142, 10, 1.300) + pump(452, 134, 10, 1.300);
+  s += cyl(486, 168, 10, 8, 20, 'gBlue', '#5aa4ff');
+
+  // ---- tuberías elevadas ----
+  s += pipe([[198, 132, 19], [222, 132, 19], [222, 150, 19], [238, 150, 30]], 4);
+  s += pipe([[250, 170, 36], [330, 170, 36], [330, 150, 18], [388, 150, 18]], 4.500);
+  s += pipe([[392, 156, 18], [496, 156, 18], [496, 112, 18], [470, 112, 36]], 4);
+  s += pipe([[505, 168, 16], [512, 168, 16], [512, 36, 16], [300, 36, 26], [290, 36, 34]], 4.500);
+  s += pipe([[262, 118, 100], [262, 60, 100], [200, 60, 30]], 3.500);
+  s += '</g>';
+  return s;
+}
+
+function placeOverlay(el, x, y, z) {
+  const p = P(x, y, z), X = (p[0] * 1.3 + 440) / 10, Y = (p[1] * 1.3 + 105) / 6;
+  el.style.left = X.toFixed(2) + '%'; el.style.top = Y.toFixed(2) + '%';
+}
+
+let bubLevel = -1;
+function rebuildBubbles(dose) {
+  const n = Math.round(clamp(8 + dose * 3.2, 8, 60));
+  if (n === bubLevel) return; bubLevel = n;
+  let a = '';
+  for (let i = 0; i < n; i++) {
+    const x = 48 + Math.random() * 46, y = 56 + Math.random() * 100, p = P(x, y, 22), r = 0.8 + Math.random() * 1.500;
+    a += '<circle class="bub" cx="' + f1(p[0]) + '" cy="' + f1(p[1]) + '" r="' + r.toFixed(1) + '" fill="#f2fffe" style="--rise:-' + (14 + Math.random() * 22).toFixed(0) + 'px;--d:' + (2 + Math.random() * 2.200).toFixed(1) + 's;--dl:-' + (Math.random() * 4).toFixed(1) + 's"/>';
+  }
+  $('#poolbub').innerHTML = a;
+  let b = '';
+  for (let i = 0; i < Math.round(n / 2); i++) {
+    const p = P(-40 + (Math.random() - .5) * 20, 150 + (Math.random() - .5) * 20, 8 + Math.random() * 8);
+    b += '<circle class="bub" cx="' + f1(p[0]) + '" cy="' + f1(p[1]) + '" r="' + (0.9 + Math.random() * 1.600).toFixed(1) + '" fill="#f2fffe" style="--rise:-' + (20 + Math.random() * 20).toFixed(0) + 'px;--d:' + (1.600 + Math.random() * 1.800).toFixed(1) + 's;--dl:-' + (Math.random() * 3).toFixed(1) + 's"/>';
+  }
+  $('#jarbub').innerHTML = b;
+}
+
+/* ===================== Estado de la simulación ===================== */
+const FIELDS = [
+  { k: 'caudal', label: 'Caudal de entrada', unit: 'm³/h', step: 10, dec: 0 },
+  { k: 'ntu', label: 'Turbidez', unit: 'NTU', step: 0.5, dec: 1 },
+  { k: 'ph', label: 'pH', unit: '', step: 0.1, dec: 1 },
+  { k: 'temp', label: 'Temperatura', unit: '°C', step: 0.5, dec: 1 },
+  { k: 'uv', label: 'UV254', unit: '1/m', step: 0.5, dec: 1 },
+  { k: 'dqo', label: 'DQO', unit: 'mg/L', step: 1, dec: 0 }
+];
+const PRESETS = [
+  { n: 'Agua normal', v: { caudal: 700, ntu: 18, ph: 7.2, temp: 20, uv: 24, dqo: 80 } },
+  { n: 'Carga alta', v: { caudal: 950, ntu: 42, ph: 7.8, temp: 26, uv: 48, dqo: 170 } },
+  { n: 'Lluvia', v: { caudal: 1100, ntu: 52, ph: 7.0, temp: 17, uv: 34, dqo: 120 } },
+  { n: 'Agua limpia', v: { caudal: 450, ntu: 6, ph: 6.9, temp: 15, uv: 10, dqo: 30 } }
+];
+const CHARTS = [
+  { k: 'ntu', title: 'Turbidez', unit: 'NTU', lo: 0, hi: 80, tk: 4, dec: 1 },
+  { k: 'ph', title: 'pH', unit: '', lo: 5, hi: 10, tk: 5, dec: 2 },
+  { k: 'temp', title: 'Temperatura', unit: '°C', lo: 0, hi: 40, tk: 4, dec: 1 },
+  { k: 'uv', title: 'UV254', unit: '1/m', lo: 0, hi: 80, tk: 4, dec: 1 },
+  { k: 'dqo', title: 'DQO', unit: 'mg/L', lo: 0, hi: 240, tk: 4, dec: 0 }
+];
+const N = 60;
+const set = Object.assign({}, PRESETS[0].v);
+const reading = Object.assign({}, set);
+const noise = {}; FEATS.forEach(f => noise[f] = 0);
+const hist = { in: {}, out: {} }; FEATS.forEach(f => { hist.in[f] = []; hist.out[f] = []; });
+let res = null, model = null, timer = null, running = false, mode = 'ml', manualDose = 6, last = null;
+
+function buildPanel() {
+  $('#fields').innerHTML = FIELDS.map(f => {
+    const r = RANGES[f.k];
+    return '<div class="fld"><label for="n-' + f.k + '"><span>' + f.label + '</span><span>' + f.unit + '</span></label>'
+      + '<div class="frow"><input id="n-' + f.k + '" type="number" min="' + r[0] + '" max="' + r[1] + '" step="' + f.step + '" value="' + set[f.k] + '" inputmode="decimal">'
+      + '<input id="r-' + f.k + '" type="range" min="' + r[0] + '" max="' + r[1] + '" step="' + f.step + '" value="' + set[f.k] + '" aria-label="' + f.label + '"></div></div>';
+  }).join('');
+  FIELDS.forEach(f => {
+    const n = $('#n-' + f.k), r = $('#r-' + f.k);
+    const apply = v => { v = parseFloat(v); if (isNaN(v)) return; set[f.k] = clamp(v, RANGES[f.k][0], RANGES[f.k][1]); };
+    n.addEventListener('input', () => { apply(n.value); r.value = set[f.k]; });
+    r.addEventListener('input', () => { apply(r.value); n.value = set[f.k]; });
+  });
+  $('#presets').innerHTML = PRESETS.map((p, i) => '<button class="chipbtn" data-i="' + i + '">' + p.n + '</button>').join('');
+  $('#presets').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    Object.assign(set, PRESETS[+b.dataset.i].v);
+    FIELDS.forEach(f => { $('#n-' + f.k).value = set[f.k]; $('#r-' + f.k).value = set[f.k]; });
+    $('#status').textContent = 'Escenario: ' + PRESETS[+b.dataset.i].n;
+  });
+  $('#c1').style.cssText = ''; $('#c3').style.cssText = '';
+  placeOverlay($('#c1'), 188, 62, 36); placeOverlay($('#c3'), 70, 172, 34); placeOverlay($('#c2'), 118, 44, 70);
+  $('#qin').innerHTML = FIELDS.map(f => '<dt>' + f.label.split(' ')[0] + (f.unit ? ' (' + f.unit + ')' : '') + '</dt><dd id="qi-' + f.k + '">–</dd>').join('');
+  $('#qout').innerHTML = FIELDS.filter(f => f.k !== 'caudal').map(f => '<dt>' + f.label.split(' ')[0] + (f.unit ? ' (' + f.unit + ')' : '') + '</dt><dd id="qo-' + f.k + '">–</dd>').join('')
+    + '<dt>O₃ residual (mg/L)</dt><dd id="qo-res">–</dd><dt>Remoción DQO</dt><dd id="qo-rem">–</dd>';
+  $('#charts').innerHTML = CHARTS.map(c => '<article class="ch"><header><h3>' + c.title + (c.unit ? ' <span style="color:var(--mut)">(' + c.unit + ')</span>' : '') + '</h3><span class="val mono" id="v-' + c.k + '">–</span></header><canvas id="cv-' + c.k + '" aria-label="Gráfica de ' + c.title + '"></canvas></article>').join('');
+}
+
+function gaussR() { return gauss(Math.random); }
+function step(silent) {
+  const x = {};
+  FEATS.forEach(f => {
+    const rg = RANGES[f][1] - RANGES[f][0];
+    noise[f] = 0.8 * noise[f] + gaussR() * 0.012 * rg;
+    reading[f] += (set[f] - reading[f]) * 0.35;
+    x[f] = clamp(reading[f] + noise[f], RANGES[f][0] * 0.8, RANGES[f][1] * 1.1);
+  });
+  const req = requiredDose(x);
+  const v = FEATS.map(f => x[f]);
+  const rec = clamp(model ? model.predict(v) : req, 0.5, 30);
+  const dose = mode === 'ml' ? rec : manualDose;
+  const ratio = dose / req;
+  const rem = 0.93 * (1 - Math.exp(-2.6 * ratio));
+  const out = {
+    ntu: x.ntu * (1 - 0.55 * rem) * (1 + gaussR() * 0.015),
+    ph: x.ph - 0.12 * rem + gaussR() * 0.01,
+    temp: x.temp + 0.1 * rem,
+    uv: x.uv * (1 - 0.95 * rem) * (1 + gaussR() * 0.015),
+    dqo: x.dqo * (1 - rem) * (1 + gaussR() * 0.015)
+  };
+  const remD = rem, remU = 0.95 * rem, remN = 0.55 * rem;
+  const q = Math.round(100 * Math.min(1, (0.55 * remD + 0.30 * remU + 0.15 * remN) / 0.9));
+  const residual = Math.max(0, dose - req) * 0.4;
+  const cost = dose * 0.03;
+  FEATS.forEach(f => {
+    hist.in[f].push(x[f]); if (hist.in[f].length > N) hist.in[f].shift();
+    hist.out[f].push(f === 'caudal' ? x[f] : out[f]); if (hist.out[f].length > N) hist.out[f].shift();
+  });
+  last = { x, out, dose, rec, req, ratio, rem, q, residual, cost };
+  if (!silent) updateUI();
+}
+
+function updateUI() {
+  const L = last; if (!L) return;
+  FIELDS.forEach(f => { $('#qi-' + f.k).textContent = L.x[f.k].toFixed(f.dec); });
+  FIELDS.filter(f => f.k !== 'caudal').forEach(f => { $('#qo-' + f.k).textContent = L.out[f.k].toFixed(f.dec); });
+  $('#qo-res').textContent = L.residual.toFixed(2);
+  $('#qo-rem').textContent = (L.rem / 0.93 * 93).toFixed(0) + ' %';
+  $('#k-q').textContent = L.q;
+  const st = $('#k-state');
+  if (L.ratio < 0.9) { st.textContent = 'Subdosificado'; st.style.color = 'var(--bad)'; }
+  else if (L.ratio > 1.25) { st.textContent = 'Sobredosis'; st.style.color = 'var(--warn)'; }
+  else { st.textContent = 'Dosis óptima'; st.style.color = 'var(--good)'; }
+  $('#k-d').innerHTML = L.dose.toFixed(1) + '<i>mg/L</i>';
+  $('#k-c').innerHTML = L.cost.toFixed(2) + '<i>MXN/m³</i>';
+  $('#c1v').textContent = (L.dose / 3).toFixed(1);
+  $('#c3v').textContent = (L.dose / 3).toFixed(1);
+  $('#o2a').textContent = L.dose.toFixed(2);
+  $('#o2r').textContent = L.rec.toFixed(2);
+  $('#o2q').textContent = L.x.caudal.toFixed(0);
+  if (mode === 'ml') { $('#dose').value = L.rec.toFixed(1); $('#doser').value = L.rec.toFixed(1); }
+  $('#scene').style.setProperty('--flowdur', (2.4 - 1.5 * clamp(L.x.caudal / 1200, 0, 1)).toFixed(2) + 's');
+  $('#dosefx').setAttribute('opacity', clamp(0.25 + L.ratio * 0.45, 0.2, 1).toFixed(2));
+  rebuildBubbles(L.dose);
+  CHARTS.forEach(c => { $('#v-' + c.k).textContent = L.x[c.k].toFixed(c.dec) + ' → ' + L.out[c.k].toFixed(c.dec); });
+  drawCharts();
+}
+
+/* ===================== Gráficas ===================== */
+function drawLine(cv, series, o) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const Lm = o.left || 34, R = 8, T = 8, B = 18, pw = w - Lm - R, ph = h - T - B;
+  g.font = '10px JetBrains Mono, monospace'; g.textBaseline = 'middle';
+  for (let i = 0; i <= o.tk; i++) {
+    const y = T + ph - ph * i / o.tk, v = o.lo + (o.hi - o.lo) * i / o.tk;
+    g.strokeStyle = 'rgba(126,165,177,.16)'; g.lineWidth = 1; g.beginPath(); g.moveTo(Lm, y + .5); g.lineTo(w - R, y + .5); g.stroke();
+    g.fillStyle = '#7ea5b1'; g.textAlign = 'right'; g.fillText(Number.isInteger(v) ? v : v.toFixed(1), Lm - 5, y);
+  }
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#7ea5b1';
+  g.fillText('−60 s', Lm, h - 4); g.textAlign = 'center'; g.fillText('−30 s', Lm + pw / 2, h - 4); g.textAlign = 'right'; g.fillText('ahora', w - R, h - 4);
+  series.forEach((s, si) => {
+    const d = s.data; if (!d.length) return;
+    const xs = i => Lm + pw * (i + (N - d.length)) / (N - 1), ys = v => T + ph - clamp((v - o.lo) / (o.hi - o.lo), 0, 1) * ph;
+    g.beginPath(); d.forEach((v, i) => i ? g.lineTo(xs(i), ys(v)) : g.moveTo(xs(i), ys(v)));
+    if (si === 0 && o.area) {
+      g.save(); g.lineTo(xs(d.length - 1), T + ph); g.lineTo(xs(0), T + ph); g.closePath();
+      const gr = g.createLinearGradient(0, T, 0, T + ph); gr.addColorStop(0, s.color + '55'); gr.addColorStop(1, s.color + '00'); g.fillStyle = gr; g.fill(); g.restore();
+      g.beginPath(); d.forEach((v, i) => i ? g.lineTo(xs(i), ys(v)) : g.moveTo(xs(i), ys(v)));
+    }
+    g.strokeStyle = s.color; g.lineWidth = 1.600; g.lineJoin = 'round'; g.stroke();
+    const lx = xs(d.length - 1), ly = ys(d[d.length - 1]);
+    g.fillStyle = s.color; g.beginPath(); g.arc(lx, ly, 3, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(5,15,22,.9)'; g.lineWidth = 1.500; g.stroke();
+  });
+}
+function drawCharts() {
+  CHARTS.forEach(c => {
+    const cv = $('#cv-' + c.k);
+    drawLine(cv, [{ data: hist.in[c.k], color: '#26e6d8' }, { data: hist.out[c.k], color: '#3fdc98' }], { lo: c.lo, hi: c.hi, tk: c.tk, area: true });
+  });
+}
+
+/* ===================== Control de la simulación ===================== */
+function setRunning(on) {
+  running = on;
+  clearInterval(timer);
+  if (on) timer = setInterval(() => step(), 1000);
+  $('#dot').classList.toggle('on', on);
+  $('#livetxt').textContent = on ? 'Simulación en vivo' : 'Detenido';
+  $('#status').textContent = on ? 'Simulación en curso' : 'Simulación detenida';
+  $('#status').style.color = on ? 'var(--good)' : 'var(--warn)';
+  $('#b-play').setAttribute('aria-pressed', on); $('#b-stop').setAttribute('aria-pressed', !on);
+  $('#scene').style.animationPlayState = on ? 'running' : 'paused';
+  document.querySelectorAll('#scene .flow,#scene .wave,#scene .bub').forEach(e => e.style.animationPlayState = on ? 'running' : 'paused');
+}
+function setMode(m) {
+  mode = m;
+  const manual = m === 'manual';
+  $('#dose').disabled = !manual; $('#doser').disabled = !manual;
+  $('#dosemode').textContent = manual ? 'Manual' : 'Recomendada por ML';
+  if (manual) { manualDose = last ? last.dose : manualDose; $('#dose').value = manualDose.toFixed(1); $('#doser').value = manualDose.toFixed(1); }
+  if (last) { step(true); updateUI(); }
+}
+
+/* ===================== Pestaña de modelos ===================== */
+function drawScatter(cv, yt, yp, color) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const lo = 0, hi = Math.ceil(Math.max.apply(null, yt) / 5) * 5;
+  const Lm = 38, R = 12, T = 10, B = 30, pw = w - Lm - R, ph = h - T - B;
+  const X = v => Lm + (v - lo) / (hi - lo) * pw, Y = v => T + ph - (clamp(v, lo, hi) - lo) / (hi - lo) * ph;
+  g.font = '10px JetBrains Mono, monospace'; g.fillStyle = '#7ea5b1';
+  for (let v = lo; v <= hi; v += 5) {
+    g.strokeStyle = 'rgba(126,165,177,.16)'; g.beginPath(); g.moveTo(Lm, Y(v) + .5); g.lineTo(w - R, Y(v) + .5); g.stroke();
+    g.beginPath(); g.moveTo(X(v) + .5, T); g.lineTo(X(v) + .5, T + ph); g.stroke();
+    g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(v, Lm - 6, Y(v));
+    g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText(v, X(v), T + ph + 14);
+  }
+  g.textAlign = 'center'; g.fillText('Dosis real (mg/L)', Lm + pw / 2, h - 4);
+  g.save(); g.translate(10, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText('Dosis predicha (mg/L)', 0, 0); g.restore();
+  g.strokeStyle = '#ffb454'; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(X(lo), Y(lo)); g.lineTo(X(hi), Y(hi)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = color + 'aa';
+  yt.forEach((v, i) => { g.beginPath(); g.arc(X(v), Y(yp[i]), 3, 0, 7); g.fill(); });
+}
+function renderML() {
+  const r = res, w = r.models[r.win], I = r.info;
+  const sorted = r.models.slice().sort((a, b) => a.rmse - b.rmse), second = sorted[1];
+  const maxR = Math.max.apply(null, r.models.map(m => m.rmse));
+  const impOrder = FEATS.map((f, i) => ({ f: f, v: r.importance[i] })).sort((a, b) => b.v - a.v);
+  const top = impOrder[0], top2 = impOrder[1];
+  $('#mlroot').innerHTML =
+    '<div class="grid2">'
+    + '<section class="panel"><h2 class="ptitle">1 · Ficha del problema y dataset</h2><div class="pad"><dl class="defs">'
+    + '<dt>Problema</dt><dd>Dosificar ozono en un tratamiento terciario de agua residual sin pasarse ni quedarse corto.</dd>'
+    + '<dt>Tipo de tarea</dt><dd>Regresión supervisada</dd>'
+    + '<dt>Variable objetivo</dt><dd>Dosis de ozono, mg/L</dd>'
+    + '<dt>Variables de entrada</dt><dd>Caudal, turbidez, pH, temperatura, UV254 y DQO</dd>'
+    + '<dt>Fuente</dt><dd>Simulador de proceso con semilla fija (2026). Rangos típicos de planta y ruido de sensor.</dd>'
+    + '<dt>Registros</dt><dd class="mono">' + I.bruto + ' brutos · ' + I.final + ' después de limpiar</dd>'
+    + '</dl></div></section>'
+    + '<section class="panel"><h2 class="ptitle">2 · Preparación de los datos</h2><div class="pad"><div class="flow-tiles">'
+    + '<div class="tile"><small>Registros brutos</small><b>' + I.bruto + '</b></div>'
+    + '<div class="tile"><small>Duplicados quitados</small><b>' + I.duplicados + '</b></div>'
+    + '<div class="tile"><small>Faltantes (mediana)</small><b>' + I.faltantes + '</b></div>'
+    + '<div class="tile"><small>Atípicos (IQR 1.5)</small><b>' + I.atipicos + '</b></div>'
+    + '<div class="tile end"><small>Registros finales</small><b>' + I.final + '</b></div></div>'
+    + '<p class="note">División 80/20: <span class="mono">' + r.nTrain + '</span> para entrenar y <span class="mono">' + r.nTest + '</span> para probar. KNN y la regresión normalizan las variables con la media y la desviación del conjunto de entrenamiento.</p></div></section>'
+    + '</div>'
+    + '<section class="panel"><h2 class="ptitle">3 · Entrenamiento y comparación de modelos</h2><div class="pad"><div class="tbl"><table><thead><tr><th>Modelo</th><th>RMSE (mg/L)</th><th>MAE (mg/L)</th><th>R²</th><th>Entrenamiento</th></tr></thead><tbody>'
+    + r.models.map((m, i) => '<tr class="' + (i === r.win ? 'win' : '') + '"><td>' + m.name + (i === r.win ? '<span class="tag">Ganador</span>' : '') + '<small>' + m.desc + '</small></td><td class="mono">' + m.rmse.toFixed(3) + '</td><td class="mono">' + m.mae.toFixed(3) + '</td><td class="mono">' + m.r2.toFixed(3) + '</td><td class="mono">' + (m.ms < 1 ? '<1' : m.ms.toFixed(0)) + ' ms</td></tr>').join('')
+    + '</tbody></table></div>'
+    + '<p class="note">Los tres algoritmos pedidos son KNN, Árbol de decisión y Random Forest. La regresión lineal se agrega como línea base para saber si vale la pena un modelo más complejo. Todas las métricas se calculan sobre el 20 % que el modelo no vio.</p></div></section>'
+    + '<div class="grid2">'
+    + '<section class="panel"><h2 class="ptitle">Error por modelo (RMSE, menos es mejor)</h2><div class="pad"><div class="bars">'
+    + r.models.map((m, i) => '<div class="bar ' + (i === r.win ? 'win' : '') + '"><span>' + m.name.replace(' (base)', '') + '</span><div class="track"><div class="fill" style="width:' + (m.rmse / maxR * 100).toFixed(1) + '%"></div></div><span class="n">' + m.rmse.toFixed(2) + '</span></div>').join('')
+    + '</div></div></section>'
+    + '<section class="panel"><h2 class="ptitle">Variables que más influyen (' + w.name + ')</h2><div class="pad"><div class="bars">'
+    + impOrder.map((o, i) => '<div class="bar ' + (i === 0 ? 'win' : '') + '"><span>' + FEAT_LABEL[o.f] + '</span><div class="track"><div class="fill" style="width:' + (o.v / impOrder[0].v * 100).toFixed(1) + '%"></div></div><span class="n">' + o.v.toFixed(0) + ' %</span></div>').join('')
+    + '</div><p class="note">Importancia por permutación: cuánto sube el error cuando se desordena una variable.</p></div></section>'
+    + '</div>'
+    + '<div class="grid2">'
+    + '<section class="panel"><h2 class="ptitle">Dosis real contra dosis predicha (' + w.name + ')</h2><div class="pad"><canvas id="sc" class="scatter" aria-label="Dispersión de dosis real contra predicha"></canvas><p class="note">Cada punto es un registro de prueba. La línea punteada es la predicción perfecta.</p></div></section>'
+    + '<section class="panel"><h2 class="ptitle">Modelo ganador y justificación</h2><div class="pad">'
+    + '<p style="margin-top:0"><b>' + w.name + '</b> obtuvo el menor error: RMSE de <span class="mono">' + w.rmse.toFixed(2) + '</span> mg/L y R² de <span class="mono">' + w.r2.toFixed(2) + '</span>. El segundo mejor fue ' + second.name + ' con <span class="mono">' + second.rmse.toFixed(2) + '</span> mg/L.</p>'
+    + '<p>Las variables dominantes son ' + FEAT_LABEL[top.f].toLowerCase() + ' y ' + FEAT_LABEL[top2.f].toLowerCase() + ', En el simulador la dosis sube con la carga orgánica (DQO y UV254), la temperatura y el pH, por eso aparecen arriba.</p>'
+    + '<p>Este es el modelo que usa la pestaña Simulación para recomendar la dosis. Puedes cambiarlo en el selector del panel izquierdo y ver cómo se mueve el índice de calidad.</p>'
+    + '<div class="callout"><b>Declaración de IA generativa.</b> El código de esta aplicación se generó con ayuda de Claude (Anthropic). El equipo debe revisarlo, entender cada modelo y poder adaptarlo y probarlo, como pide la actividad.</div>'
+    + '</div></section></div>';
+  drawScatter($('#sc'), r.yte, w.yp, '#26e6d8');
+}
+
+/* ===================== Arranque ===================== */
+function selectTab(name) {
+  const sim = name !== 'modelos';
+  $('#tab-sim').hidden = !sim; $('#tab-ml').hidden = sim;
+  $('#tb-sim').setAttribute('aria-selected', sim); $('#tb-ml').setAttribute('aria-selected', !sim);
+  if (sim) requestAnimationFrame(drawCharts); else if (res) requestAnimationFrame(() => drawScatter($('#sc'), res.yte, res.models[res.win].yp, '#26e6d8'));
+}
+function go(name) { selectTab(name); try { history.replaceState(null, '', '#' + name); } catch (e) { location.hash = name; } }
+
+$('#scene').innerHTML = buildScene();
+buildPanel();
+$('#tb-sim').addEventListener('click', () => go('simulacion'));
+$('#tb-ml').addEventListener('click', () => go('modelos'));
+window.addEventListener('hashchange', () => selectTab(location.hash.replace('#', '')));
+$('#b-play').addEventListener('click', () => { if (!running && model) setRunning(true); });
+$('#b-stop').addEventListener('click', () => { if (running) setRunning(false); });
+$('#b-edit').addEventListener('click', () => { $('#n-caudal').focus(); $('#n-caudal').select(); });
+$('#mode').addEventListener('change', e => setMode(e.target.value));
+$('#mdl').addEventListener('change', e => { model = res.models[+e.target.value].model; step(true); updateUI(); });
+function manualInput(v) { v = parseFloat(v); if (isNaN(v)) return; manualDose = clamp(v, 0.5, 30); $('#doser').value = manualDose; if (mode === 'manual') { step(true); updateUI(); } }
+$('#dose').addEventListener('input', e => manualInput(e.target.value));
+$('#doser').addEventListener('input', e => { $('#dose').value = e.target.value; manualInput(e.target.value); });
+if (window.ResizeObserver) new ResizeObserver(() => { if (!$('#tab-sim').hidden) drawCharts(); }).observe($('#charts'));
+
+selectTab(location.hash.replace('#', ''));
+setTimeout(function () {
+  res = runPipeline();
+  model = res.models[res.win].model;
+  $('#mdl').innerHTML = res.models.map((m, i) => '<option value="' + i + '">' + m.name + (i === res.win ? ' ★' : '') + '</option>').join('');
+  $('#mdl').value = res.win;
+  for (let i = 0; i < N; i++) step(true);
+  step(false);
+  renderML();
+  setRunning(true);
+}, 60);
+})();
+
+</script>
+
+</body></html>
